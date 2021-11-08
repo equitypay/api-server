@@ -27,9 +27,9 @@ secret_args = {
 send_args = {
     "secret": fields.Str(required=True),
     "salt": fields.Str(required=True),
-    "amount": fields.Float(required=True),
+    "amount": fields.Int(required=True),
     "destination": fields.Str(required=True),
-    "fee": fields.Float(missing=0.1)
+    "fee": fields.Int(missing=10000000)
 }
 
 def to_wif(secret, salt):
