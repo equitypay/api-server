@@ -82,8 +82,8 @@ def send(args):
 
     dest = args["destination"]
     balance = Address.balance(addr_str)
-    amount = utils.satoshis(args["amount"])
-    fee = utils.satoshis(args["fee"])
+    amount = args["amount"]
+    fee = args["fee"]
 
     if balance["error"]:
         return balance
