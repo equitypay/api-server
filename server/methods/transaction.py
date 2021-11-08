@@ -1,9 +1,8 @@
 from server import utils
 from server import cache
 import config
-import json
 
-class Transaction():
+class Transaction:
     @classmethod
     def broadcast(cls, raw: str):
         return utils.make_request("sendrawtransaction", [raw])

@@ -10,8 +10,10 @@ cache = Cache(config={"CACHE_TYPE": "simple"})
 cache.init_app(app)
 CORS(app)
 
-from server import routes
-from server import rest
+from . import wallet
+from . import routes
+from . import rest
 
+wallet.init(app)
 routes.init(app)
 rest.init(app)
