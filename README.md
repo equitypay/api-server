@@ -36,3 +36,21 @@ Responce have following fields:
 - `id`: api server identifier which is set in `config.py` file.
 
 P.s. keep in mind, that all amounts in this API should be in **Satoshis**.
+
+# Nginx
+
+```
+server {
+    listen 80;
+    server_name domain.com;
+
+    location / {
+        proxy_pass http://localhost:4321;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
