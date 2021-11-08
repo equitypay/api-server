@@ -11,7 +11,6 @@ from flask import Blueprint
 from webargs import fields
 from . import utils
 import hashlib
-import config
 
 constants.NETWORK_SEGWIT_PREFIXES["mainnet"] = "eqpay"
 constants.NETWORK_P2PKH_PREFIXES["mainnet"] = b"\x21"
@@ -21,20 +20,22 @@ constants.NETWORK_WIF_PREFIXES["mainnet"] = b"\x46"
 blueprint = Blueprint("wallet", __name__)
 
 secret_args = {
-    "secret": fields.Str(required=True)
+    "secret": fields.Str(required=True),
+    "salt": fields.Str(required=True)
 }
 
 send_args = {
     "secret": fields.Str(required=True),
+    "salt": fields.Str(required=True),
     "amount": fields.Float(required=True),
     "destination": fields.Str(required=True),
     "fee": fields.Float(missing=0.1)
 }
 
-def to_wif(secret):
+def to_wif(secret, salt):
     seed = hashlib.blake2b(
         str.encode(secret),
-        key=str.encode(config.secret),
+        key=str.encode(salt),
         digest_size=32
     ).digest()
 
@@ -56,25 +57,25 @@ def check_address(address):
 
     return True
 
-@blueprint.route("/address", methods=["GET"])
-@use_args(secret_args, location="query")
+@blueprint.route("/address", methods=["POST"])
+@use_args(secret_args, location="json")
 def address(args):
     setup("mainnet")
 
-    priv = PrivateKey(wif=to_wif(args["secret"]))
+    priv = PrivateKey(wif=to_wif(args["secret"], args["salt"]))
     pub = priv.get_public_key()
     address = pub.get_address()
 
-    return {
+    return utils.response({
         "address": address.to_string()
-    }
+    })
 
-@blueprint.route("/send", methods=["GET"])
-@use_args(send_args, location="query")
+@blueprint.route("/send", methods=["POST"])
+@use_args(send_args, location="json")
 def send(args):
     setup("mainnet")
 
-    priv = PrivateKey(wif=to_wif(args["secret"]))
+    priv = PrivateKey(wif=to_wif(args["secret"], args["salt"]))
     pub = priv.get_public_key()
     address = pub.get_address()
     addr_str = address.to_string()
