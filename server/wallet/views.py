@@ -1,15 +1,15 @@
 from bitcoinutils.transactions import Transaction, TxInput, TxOutput
-from .methods.transaction import Transaction as NodeTransaction
+from ..methods.transaction import Transaction as NodeTransaction
 from bitcoinutils.keys import PrivateKey, P2pkhAddress
 from webargs.flaskparser import use_args
 from bitcoinutils.script import Script
+from ..methods.address import Address
 from bitcoinutils.setup import setup
-from .methods.address import Address
 from bitcoinutils import constants
 from base58check import b58encode
 from flask import Blueprint
 from webargs import fields
-from . import utils
+from .. import utils
 import hashlib
 
 constants.NETWORK_SEGWIT_PREFIXES["mainnet"] = "eqpay"

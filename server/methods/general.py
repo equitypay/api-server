@@ -1,7 +1,4 @@
 from server import utils
-from server import cache
-import requests
-import config
 
 class General:
     @classmethod
@@ -24,13 +21,8 @@ class General:
         return data
 
     @classmethod
-    @cache.memoize(timeout=config.cache)
     def supply(cls):
         data = utils.make_request("getblockchaininfo")
-
-        if data["error"]:
-            return data
-
         height = data["result"]["blocks"]
         result = utils.supply(height)
         result["height"] = height
@@ -40,7 +32,7 @@ class General:
     @classmethod
     def fee(cls):
         return utils.response({
-            "feerate": utils.satoshis(0.00001),
+            "feerate": utils.satoshis(0.01),
             "blocks": 6
         })
 
@@ -58,7 +50,11 @@ class General:
         return data
 
     @classmethod
-    @cache.memoize(timeout=600)
-    def price(cls):
-        link = "https://api.coingecko.com/api/v3/simple/price?ids=sugarchain&vs_currencies=usd,btc"
-        return requests.get(link).json()
+    def current_height(cls):
+        data = utils.make_request("getblockcount")
+        height = 0
+
+        if data["error"] is None:
+            height = data["result"]
+
+        return height

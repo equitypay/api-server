@@ -19,16 +19,16 @@ def make_request(method, params=[]):
         return dead_response()
 
 def reward(height):
-    halvings = height // 12500000
+    halvings = height // 525960
 
-    if halvings >= 64:
+    if halvings >= 10:
         return 0
 
-    return int(satoshis(42.94967296) // (2 ** halvings))
+    return int(satoshis(4) // (2 ** halvings))
 
 def supply(height):
-    reward = satoshis(42.94967296)
-    halvings = 12500000
+    reward = satoshis(4)
+    halvings = 525960
     halvings_count = 0
     supply = reward
 
@@ -48,7 +48,7 @@ def supply(height):
     }
 
 def satoshis(value):
-    return math.ceil(value * math.pow(10, 8))
+    return int(float(value) * math.pow(10, 8))
 
-def amount(value):
-    return round(value / math.pow(10, 8), 8)
+def amount(value, decimals=8):
+    return round(float(value) / math.pow(10, decimals), decimals)
