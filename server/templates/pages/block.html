@@ -1,0 +1,119 @@
+{% extends "layout.html" %}
+{% block content %}
+	<div class="container">
+		<div class="row">
+			<div class="col-12">
+				<h1 class="h3 text-gray-800">Block</h1>
+
+				<div id="block-info-table">
+					<div class="mb-3">
+						<div class="table-responsive">
+							<table class="table table-striped table-hover">
+								<tbody>
+									<tr>
+										<td>Height</td>
+										<td id="block-info-height" data-block-info-height="{{ block.height }}">{{ block.height }} (<b>Confirmations {{ block.confirmations }}</b>)</td>
+									</tr>
+									<tr>
+										<td>Timestamp</td>
+										<td>
+											<span class="local-time" time="{{ block.created|timestamp }}"></span> (<b>{{ block.timestamp }}</b>)
+										</td>
+									</tr>
+									<tr>
+										<td>Block Hash</td>
+										<td id="block-info-hash" data-block-info-hash="{{ block.blockhash }}" class="font-monospace">{{ block.blockhash }}</td>
+									</tr>
+									<tr>
+										<td>Previous Block</td>
+
+										{% if block.previous_block %}
+											<td>
+												<a href="{{ url_for('explorer.block', blockhash=block.previous_block.blockhash) }}" class="font-monospace">
+													{{ block.previous_block.blockhash }}
+												</a>
+											</td>
+										{% else%}
+											<td>
+												<b>Genesis block</b>
+											</td>
+										{% endif %}
+									</tr>
+									<tr>
+										<td>Next Block</td>
+
+										{% if block.next_block %}
+											<td>
+												<a href="{{ url_for('explorer.block', blockhash=block.next_block.blockhash) }}" class="font-monospace">
+													{{ block.next_block.blockhash }}
+												</a>
+											</td>
+										{% else%}
+											<td>
+												<b>This is latest block</b>
+											</td>
+										{% endif %}
+									</tr>
+									<tr>
+										<td>Merkle Root</td>
+										<td>
+											<span class="font-monospace">
+												{{ block.merkleroot }}
+											</span>
+										</td>
+									</tr>
+									<tr>
+										<td>Size</td>
+										<td>{{ block.size }} Bytes</td>
+									</tr>
+									<tr>
+										<td>Version</td>
+										<td>{{ block.version }}</td>
+									</tr>
+									<tr>
+										<td>Transactions</td>
+										<td>{{ block.tx_count }}</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+				{% for transaction in transactions %}
+					<div class="card mb-3 fz-14">
+						<div class="card-header">
+							<a href="{{ url_for('explorer.transaction', txid=transaction.txid) }}" class="font-monospace">
+								{{ transaction.txid }}
+							</a>
+						</div>
+						<div class="card-body">
+							{% include "elements/details.html" %}
+						</div>
+					</div>
+				{% endfor %}
+
+				{% if pagination %}
+					{% if pagination.pages|length > 1 %}
+						{% if pagination.previous %}
+							<a href="{{ url_for(pagination.url, page=pagination.previous, blockhash=block.blockhash) }}" class="button">
+								<i class="fas fa-fw fa-chevron-left"></i>
+							</a>
+						{% endif %}
+
+						{% for page in pagination.pages %}
+							<a href="{{ url_for(pagination.url, page=page, blockhash=block.blockhash) }}" class="button {% if page == pagination.current %}active{% endif %} {% if page == pagination.current - 1 or page == pagination.current + 1 %}show-xs{% endif %}">
+								{{ page }}
+							</a>
+						{% endfor %}
+
+						{% if pagination.next %}
+							<a href="{{ url_for(pagination.url, page=pagination.next, blockhash=block.blockhash) }}" class="button">
+								<i class="fas fa-fw fa-chevron-right"></i>
+							</a>
+						{% endif %}
+					{% endif %}
+				{% endif %}
+			</div>
+		</div>
+	</div>
+{% endblock content %}

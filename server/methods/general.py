@@ -23,9 +23,15 @@ class General:
     @classmethod
     def supply(cls):
         data = utils.make_request("getblockchaininfo")
-        height = data["result"]["blocks"]
-        result = utils.supply(height)
-        result["height"] = height
+
+        if data["error"] is None:
+            height = data["result"]["blocks"]
+            result = utils.supply(height)
+            result["height"] = height
+
+        else:
+            result = utils.supply(0)
+            result["height"] = 0
 
         return result
 

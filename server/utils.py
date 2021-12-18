@@ -27,20 +27,24 @@ def reward(height):
     return int(satoshis(4) // (2 ** halvings))
 
 def supply(height):
-    reward = satoshis(4)
+    premine = satoshis(9000000)
+    reward = satoshis(2)
     halvings = 525960
     halvings_count = 0
     supply = reward
 
     while height > halvings:
         total = halvings * reward
-        reward = reward / 2
+        reward -= satoshis(0.13) * halvings_count
         height = height - halvings
         halvings_count += 1
 
         supply += total
 
     supply = supply + height * reward
+
+    if height > 1:
+        supply += premine
 
     return {
         "halvings": int(halvings_count),
@@ -52,3 +56,18 @@ def satoshis(value):
 
 def amount(value, decimals=8):
     return round(float(value) / math.pow(10, decimals), decimals)
+
+def pagination(url, page, items, total):
+    pagination = range(page - 4, page + 5)
+    pagination = [item for item in pagination if item >= 1 and item <= total]
+    previous_page = page - 1 if page != 1 else None
+    next_page = page + 1 if page != total else None
+
+    return {
+        "total": total,
+        "current": page,
+        "pages": pagination,
+        "previous": previous_page,
+        "next": next_page,
+        "url": url
+    }

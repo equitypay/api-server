@@ -27,6 +27,27 @@ class Block(db.Entity):
     transactions = orm.Set("Transaction")
     next_block = orm.Optional("Block")
 
+    @property
+    def confirmations(self):
+        latest_blocks = Block.select().order_by(
+            orm.desc(Block.height)
+        ).first()
+
+        return latest_blocks.height - self.height + 1
+
+    @property
+    def tx_count(self):
+        return self.transactions.count()
+
+    @property
+    def timestamp(self):
+        return int(self.created.timestamp())
+
+    @property
+    def txs(self):
+        transactions = self.transactions.order_by(1)
+        return transactions
+
 class Transaction(db.Entity):
     _table_ = "chain_transactions"
 
@@ -88,6 +109,66 @@ class Transaction(db.Entity):
             "inputs": inputs
         }
 
+    @property
+    def fee(self):
+        output_amount = 0
+        input_amount = 0
+        for vin in self.inputs:
+            input_amount += vin.vout.amount
+
+        for vout in self.outputs:
+            output_amount += vout.amount
+
+        return float(input_amount - output_amount)
+
+    @property
+    def vin(self):
+        inputs = self.inputs.order_by(-1)
+        return inputs
+
+    @property
+    def simple_vin(self):
+        result = []
+        tmp = {}
+
+        for vin in self.vin:
+            if vin.vout.address not in tmp:
+                tmp[vin.vout.address] = 0
+
+            tmp[vin.vout.address] += vin.vout.amount
+
+        for address in tmp:
+            result.append({
+                "address": address,
+                "amount": tmp[address]
+            })
+
+        return result
+
+    @property
+    def vout(self):
+        outputs = self.outputs.order_by(-1)
+        return outputs
+
+    @property
+    def simple_vout(self):
+        result = []
+        tmp = {}
+
+        for vout in self.vout:
+            if vout.address not in tmp:
+                tmp[vout.address] = 0
+
+            tmp[vout.address] += vout.amount
+
+        for address in tmp:
+            result.append({
+                "address": address,
+                "amount": tmp[address]
+            })
+
+        return result
+
 class Address(db.Entity):
     _table_ = "chain_addresses"
 
@@ -100,6 +181,15 @@ class Address(db.Entity):
     )
 
     balance = orm.Optional("Balance")
+
+    @property
+    def txcount(self):
+        return self.transactions.count()
+
+    @property
+    def txs(self):
+        transactions = self.transactions.order_by(-1)
+        return transactions
 
 class Balance(db.Entity):
     _table_ = "chain_address_balance"
@@ -121,7 +211,7 @@ class Input(db.Entity):
             address=self.vout.address
         )
 
-        balance.balance += self.vout.amount
+        balance.amount += self.vout.amount
 
 class Output(db.Entity):
     _table_ = "chain_outputs"
@@ -145,7 +235,7 @@ class Output(db.Entity):
             address=self.address
         )
 
-        balance.balance -= self.amount
+        balance.amount -= self.amount
 
     orm.composite_index(transaction, n)
 

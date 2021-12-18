@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+{% block content %}
+	<div class="container">
+		<div class="row">
+			<div class="col-12">
+				<h1 class="h3 text-gray-800">Address</h1>
+
+				<div id="address-info-table">
+					<div class="mb-3">
+						<div class="table-responsive">
+							<table class="table table-striped table-hover">
+								<tbody>
+									<tr>
+										<td>Address</td>
+										<td>
+											<span class="font-monospace">
+												{{ address.address }}
+											</span>
+										</td>
+									</tr>
+									<tr>
+										<td>Balance</td>
+										<td>
+											<span>{{ address.balance.amount|amount }}</span> EQPAY
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+
+				{% for transaction in transactions %}
+					<div class="card mb-3 fz-14">
+						<div class="card-header">
+							<a href="{{ url_for('explorer.transaction', txid=transaction.txid) }}" class="font-monospace">
+								{{ transaction.txid }}
+							</a>
+							<span class="float-md-end d-sm-block">
+								<span class="local-time" time="{{ transaction.block.created|timestamp }}"></span>
+							</span>
+						</div>
+						<div class="card-body">
+							{% include "elements/details.html" %}
+						</div>
+					</div>
+				{% endfor %}
+			</div>
+		</div>
+
+		{% if pagination %}
+			<div class="pagination">
+				{% if pagination.pages|length > 1 %}
+					{% if pagination.previous %}
+						<a href="{{ url_for(pagination.url, page=pagination.previous, address=address.address) }}" class="button">
+							<i class="fas fa-fw fa-chevron-left"></i>
+						</a>
+					{% endif %}
+
+					{% for page in pagination.pages %}
+						<a href="{{ url_for(pagination.url, page=page, address=address.address) }}" class="button {% if page == pagination.current %}not-active{% endif %}">
+							{{ page }}
+						</a>
+					{% endfor %}
+
+					{% if pagination.next %}
+						<a href="{{ url_for(pagination.url, page=pagination.next, address=address.address) }}" class="button">
+							<i class="fas fa-fw fa-chevron-right"></i>
+						</a>
+					{% endif %}
+				{% endif %}
+			</div>
+		{% endif %}
+	</div>
+{% endblock content %}

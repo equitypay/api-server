@@ -12,17 +12,32 @@ cache = Cache(config={"CACHE_TYPE": "simple"})
 cache.init_app(app)
 CORS(app)
 
+from .explorer import explorer
 from .wallet import wallet
 from .rest import rest
 from .db import db
 
+app.register_blueprint(explorer)
 app.register_blueprint(wallet)
 app.register_blueprint(rest)
 app.register_blueprint(db)
 
-@app.route("/")
+@app.template_filter("timestamp")
+def timestamp_filter(date):
+    return int(date.timestamp())
+
+@app.template_filter("amount")
+def amount_filter(amount):
+    result = "{:,.8f}".format(amount).rstrip("0")
+
+    if result[-1] == ".":
+        result = result[:-1]
+
+    return result
+
+@app.route("/api")
 def frontend():
-    return render_template("index.html")
+    return render_template("api.html")
 
 @app.errorhandler(404)
 def page_404(error):

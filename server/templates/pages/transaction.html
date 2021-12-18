@@ -1,0 +1,78 @@
+{% extends "layout.html" %}
+{% block content %}
+	<div class="container">
+		<div class="row">
+			<div class="col-12">
+				<h1 class="h4">Transaction</h1>
+
+				<div id="tx-info-table">
+					<div class="mb-3">
+						<div class="table-responsive">
+							<table class="table table-striped table-hover">
+								<tbody>
+									<tr>
+										<td>Transaction Hash</td>
+										<td id="tx-info-hash" data-tx-info-hash="{{ transaction.txid }}" class="font-monospace">{{ transaction.txid }}</td>
+									</tr>
+									{% if transaction.block %}
+										<tr>
+											<td>Timestamp</td>
+											<td>
+												<span class="local-time" time="{{ transaction.block.created|timestamp }}"></span> (<b>{{ transaction.block.timestamp }}</b>)
+											</td>
+										</tr>
+									{% endif %}
+									<tr>
+										<td>Height</td>
+										<td>
+											{% if transaction.block %}
+												<a href="{{ url_for('explorer.block', blockhash=transaction.block.blockhash) }}" class="font-monospace">{{ transaction.block.height }}</a>
+												<span>
+													(<b>Confirmations {{ transaction.block.confirmations }}</b>)
+												</span>
+											{% else %}
+												<b>This transaction is located in mempool</b>
+											{% endif %}
+										</td>
+									</tr>
+									<tr>
+										<td>Amount Transferred</td>
+										<td>
+											<span>{{ transaction.amount|amount }}</span> EQPAY
+										</td>
+									</tr>
+									<tr>
+										<td>Size</td>
+										<td>{{ transaction.size }} Bytes</td>
+									</tr>
+									{% if transaction.fee > 0 %}
+										<tr>
+											<td>Fee</td>
+											<td>{{ transaction.fee|amount }} EQPAY</td>
+										</tr>
+									{% endif %}
+
+									{% if transaction.coinstake or transaction.coinbase %}
+										{% if transaction.block.reward > 0 %}
+											<tr>
+												<td>Reward</td>
+												<td>{{ transaction.block.reward|amount }} EQPAY</td>
+											</tr>
+										{% endif %}
+									{% endif %}
+
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+
+				<div class="card mb-3">
+					<div class="card-body fz-14">
+						{% include "elements/details.html" %}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock content %}

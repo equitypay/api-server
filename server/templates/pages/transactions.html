@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+{% block content %}
+	<div class="container">
+		<div class="row">
+			<div class="col-12">
+				<h1 class="h4">Recent transactions</h1>
+
+				<div class="table-responsive">
+					<table class="table table-striped table-hover">
+						<thead>
+							<tr>
+								<th scope="col">Height</th>
+								<th scope="col">Hash</th>
+								<th scope="col">Time</th>
+								<th scope="col">Amount</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for transaction in transactions %}
+								<tr>
+									<td>
+										{{ transaction.block.height }}
+									</td>
+									<td>
+										<a href="{{ url_for('explorer.transaction', txid=transaction.txid) }}" class="font-monospace">
+											{{ transaction.txid }}
+										</a>
+									</td>
+									<td>
+										<span class="local-time" time="{{ transaction.block.created|timestamp }}"></span>
+									</td>
+									<td>
+										<div class="reward-wrapper">
+											<span>{{ transaction.amount|amount }} EQPAY</span>
+											{% if transaction.coinbase or transaction.coinstake %}
+												<img class="reward-icon" src="/static/img/reward.svg">
+											{% endif %}
+										</div>
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		{% include "elements/pagination.html" %}
+	</div>
+{% endblock content %}

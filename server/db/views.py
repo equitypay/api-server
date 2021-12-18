@@ -7,6 +7,7 @@ from ..services import BlockService
 from ..models import Transaction
 from .args import broadcast_args
 from .args import height_args
+from datetime import datetime
 from .args import page_args
 from flask import Blueprint
 from ..tools import display
@@ -189,7 +190,7 @@ def test(address):
 
     if address:
         result = {
-            "balance": float(address.balances.balance),
+            "balance": float(address.balances.amount),
         }
 
     return utils.response(result)
@@ -232,10 +233,12 @@ def txs(args, address):
         count = transactions.count()
 
         if args["start"]:
-            transactions = transactions.filter(lambda t: t.block.height >= args["start"])
+            start = datetime.fromtimestamp(args["start"])
+            transactions = transactions.filter(lambda t: t.created >= start)
 
         if args["finish"]:
-            transactions = transactions.filter(lambda t: t.block.height <= args["finish"])
+            finish = datetime.fromtimestamp(args["finish"])
+            transactions = transactions.filter(lambda t: t.created <= finish)
 
         for transaction in transactions:
             result.append(transaction.txid)

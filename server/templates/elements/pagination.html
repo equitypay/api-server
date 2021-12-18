@@ -1,0 +1,23 @@
+{% if pagination %}
+	<div class="pagination mb-3">
+		{% if pagination.pages|length > 1 %}
+			{% if pagination.previous %}
+				<a href="{{ url_for(pagination.url, page=pagination.previous) }}" class="button">
+					<i class="fas fa-fw fa-chevron-left"></i>
+				</a>
+			{% endif %}
+
+			{% for page in pagination.pages %}
+				<a href="{{ url_for(pagination.url, page=page) }}" class="button {% if page == pagination.current %}not-active{% endif %}">
+					{{ page }}
+				</a>
+			{% endfor %}
+
+			{% if pagination.next %}
+				<a href="{{ url_for(pagination.url, page=pagination.next) }}" class="button">
+					<i class="fas fa-fw fa-chevron-right"></i>
+				</a>
+			{% endif %}
+		{% endif %}
+	</div>
+{% endif %}

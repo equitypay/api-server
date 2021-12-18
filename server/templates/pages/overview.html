@@ -1,0 +1,79 @@
+{% extends "layout.html" %}
+{% block content %}
+	<div class="container">
+		<div class="row">
+			<div class="col-12">
+				<div class="card mb-3">
+					<div class="card-body">
+						<div style="display: flex;justify-content: center;">
+							<div style="margin: auto;">
+								<span>
+									<i class="fab fa-fw fa-buffer"></i>
+								</span>
+								Height: {{ latest.height }}
+							</div>
+							<div style="margin: auto;">
+								<span>
+									<i class="fas fa-fw fa-weight-hanging"></i>
+								</span>
+								Network Weight: {{ latest.weight }}
+							</div>
+							<div style="margin: auto;">
+								<span>
+									<i class="fas fa-fw fa-coins"></i>
+								</span>
+								Latest reward: {{ latest.reward|amount }} EQPAY
+							</div>
+							<div style="margin: auto;">
+								<span>
+									<i class="far fa-fw fa-circle"></i>
+								</span>
+								Supply: {{ supply|amount }} EQPAY
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-6">
+				<h4>Latest blocks</h4>
+				<div class="card">
+					<ul class="list-group list-group-flush">
+						{% for block in blocks %}
+							<li class="list-group-item">
+								<div style="display: flex;align-content: center;">
+									<a href="{{ url_for('explorer.block', blockhash=block.blockhash) }}" style="margin: auto;">{{ block.height }}</a>
+									<div style="margin: auto;">
+										<div>Created: <span class="local-time" time="{{ block.created|timestamp }}"/></div>
+										<div>Transactions: {{ block.tx_count }}</div>
+									</div>
+									<div style="margin: auto;">
+										Reward: {{ block.reward|amount }} EQPAY
+									</div>
+								</div>
+							</li>
+						{% endfor %}
+					</ul>
+				</div>
+			</div>
+
+			<div class="col-6">
+				<h4>Latest transactions</h4>
+				<div class="card">
+					<ul class="list-group list-group-flush">
+						{% for transaction in transactions %}
+							<li class="list-group-item">
+								<div>
+									<a style="word-wrap: break-word;" href="{{ url_for('explorer.transaction', txid=transaction.txid) }}">{{ transaction.txid }}</a>
+								</div>
+								<span>Amount: {{ transaction.amount|amount }} EQPAY</span>
+							</li>
+						{% endfor %}
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock content %}
