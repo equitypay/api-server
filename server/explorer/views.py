@@ -181,3 +181,8 @@ def search(args):
             return redirect(url_for("explorer.address", address=args["query"]))
 
     return redirect(url_for("explorer.home"))
+
+
+@blueprint.route("/api")
+def api():
+    return render_template("api.html")

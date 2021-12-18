@@ -35,10 +35,6 @@ def amount_filter(amount):
 
     return result
 
-@app.route("/api")
-def frontend():
-    return render_template("api.html")
-
 @app.errorhandler(404)
 def page_404(error):
     return jsonify(utils.dead_response("Method not found"))
