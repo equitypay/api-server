@@ -17,7 +17,7 @@ constants.NETWORK_P2PKH_PREFIXES["mainnet"] = b"\x21"
 constants.NETWORK_P2SH_PREFIXES["mainnet"] = b"\x3A"
 constants.NETWORK_WIF_PREFIXES["mainnet"] = b"\x46"
 
-blueprint = Blueprint("wallet", __name__, url_prefix="wallet")
+blueprint = Blueprint("wallet", __name__, url_prefix="/wallet")
 
 secret_args = {
     "secret": fields.Str(required=True),
