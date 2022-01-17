@@ -104,6 +104,12 @@ def sync_blocks():
                 if vout["scriptPubKey"]["type"] in ["nonstandard", "nulldata"]:
                     continue
 
+                if "addresses" not in vout["scriptPubKey"]:
+                    continue
+
+                if len(vout["scriptPubKey"]["addresses"]) == 0:
+                    continue
+
                 amount = utils.amount(vout["valueSat"])
                 script = vout["scriptPubKey"]["addresses"][0]
                 address = AddressService.get_by_address(script)
