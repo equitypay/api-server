@@ -77,8 +77,6 @@ def sync_blocks():
             coinbase = block.stake is False and index == 0
             coinstake = block.stake and index == 1
 
-            print(tx_data["txid"])
-
             transaction = TransactionService.create(
                 utils.amount(tx_data["amount"]), tx_data["txid"],
                 created, tx_data["locktime"], tx_data["size"], block,
