@@ -3,8 +3,21 @@ from .models import Address
 from .models import Balance
 from .models import Output
 from .models import Input
+from .models import Token
 from .models import Block
+from .models import Index
 from pony import orm
+
+class IndexService(object):
+    @classmethod
+    def create(cls, address, transaction):
+        if not (index := Index.get(address=address, transaction=transaction)):
+            index = Index(
+                address=address, transaction=transaction,
+                created=transaction.created
+            )
+
+        return index
 
 class BlockService(object):
     @classmethod
@@ -125,3 +138,21 @@ class OutputService(object):
             transaction=transaction, amount=amount, category=category,
             address=address, raw=raw, n=n
         )
+
+class TokenService(object):
+    @classmethod
+    def list(cls, page=1, pagesize=100, hidden=False):
+        tokens = Token.select().order_by(orm.desc(Token.created))
+
+        if not hidden:
+            tokens = tokens.filter(lambda t: not t.hidden)
+
+        return tokens.page(page, pagesize=pagesize)
+
+    @classmethod
+    def count(cls):
+        return Token.select().count(distinct=False)
+
+    @classmethod
+    def get_by_address(cls, address):
+        return Token.get(address=address)

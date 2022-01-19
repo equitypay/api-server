@@ -6,10 +6,15 @@ from .services import AddressService
 from .services import OutputService
 from .services import InputService
 from .services import BlockService
+from .services import IndexService
 from .methods.block import Block
 from datetime import datetime
 from pony import orm
 from . import utils
+
+from .models import Token, TokenBalance, Transfer
+
+TRANSFER_TOPIC = "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
 def log_block(message, block, tx=[]):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -19,6 +24,21 @@ def log_block(message, block, tx=[]):
 def log_message(message):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"{now} {message}")
+
+@orm.db_session
+def rollback_blocks(height):
+    latest_block = BlockService.latest_block()
+
+    while latest_block.height >= height:
+        log_block("Found reorg", latest_block)
+
+        reorg_block = latest_block
+        latest_block = reorg_block.previous_block
+
+        reorg_block.delete()
+        orm.commit()
+
+    log_message("Finised rollback")
 
 @orm.db_session
 def sync_blocks():
@@ -94,6 +114,8 @@ def sync_blocks():
                 balance = BalanceService.get(prev_out.address)
                 balance.amount -= prev_out.amount
 
+                IndexService.create(prev_out.address, transaction)
+
                 InputService.create(
                     vin["sequence"], vin["vout"], transaction, prev_out
                 )
@@ -110,12 +132,13 @@ def sync_blocks():
 
                 amount = utils.amount(vout["valueSat"])
                 script = vout["scriptPubKey"]["addresses"][0]
-                address = AddressService.get_by_address(script)
 
-                if not address:
+                if not (address := AddressService.get_by_address(script)):
                     address = AddressService.create(script)
 
                 address.transactions.add(transaction)
+
+                IndexService.create(address, transaction)
 
                 output = OutputService.create(
                     transaction, amount, vout["scriptPubKey"]["type"],
@@ -123,12 +146,88 @@ def sync_blocks():
                     vout["n"]
                 )
 
-                balance = BalanceService.get(address)
-
-                if not balance:
+                if not (balance := BalanceService.get(address)):
                     balance = BalanceService.create(address)
 
                 balance.amount += output.amount
+
+            receipts = utils.make_request("gettransactionreceipt", [transaction.txid])
+
+            for receipt in receipts["result"]:
+                address_from = utils.hash160_to_address(receipt["from"])
+
+                for contract in receipt["createdContracts"]:
+                    contract_address = contract["address"]
+
+                    data = utils.make_request("eqrc20info", [contract_address])
+                    if data["error"]:
+                        continue
+
+                    if not (issuer := AddressService.get_by_address(address_from)):
+                        issuer = AddressService.create(address_from)
+
+                    IndexService.create(issuer, transaction)
+
+                    info = data["result"]
+
+                    token = Token(**{
+                        "created": transaction.created,
+                        "supply": float(info["supply"]),
+                        "decimals": info["decimals"],
+                        "address": contract_address,
+                        "transaction": transaction,
+                        "ticker": info["symbol"],
+                        "name": info["name"],
+                        "issuer": issuer
+                    })
+
+                    TokenBalance(**{
+                        "amount": token.supply,
+                        "address": issuer,
+                        "token": token
+                    })
+
+                for log in receipt["log"]:
+                    if not (token := Token.get(address=log["address"])):
+                        continue
+
+                    if len(log["topics"]) != 3:
+                        continue
+
+                    if log["topics"][0] != TRANSFER_TOPIC:
+                        continue
+
+                    receiver_hash160 = log["topics"][2][-40:]
+                    address_to = utils.hash160_to_address(receiver_hash160)
+                    raw_amount = int(log["data"], 16)
+                    amount = utils.amount(raw_amount, token.decimals)
+
+                    if not (sender := AddressService.get_by_address(address_from)):
+                        sender = AddressService.create(address_from)
+
+                    if not (receiver := AddressService.get_by_address(address_to)):
+                        receiver = AddressService.create(address_to)
+
+                    if not (sender_balance := TokenBalance.get(address=sender, token=token)):
+                        sender_balance = TokenBalance(address=sender, token=token)
+
+                    if not (receiver_balance := TokenBalance.get(address=receiver, token=token)):
+                        receiver_balance = TokenBalance(address=receiver, token=token)
+
+                    IndexService.create(sender, transaction)
+                    IndexService.create(receiver, transaction)
+
+                    transfer = Transfer(**{
+                        "created": transaction.created,
+                        "transaction": transaction,
+                        "receiver": receiver,
+                        "sender": sender,
+                        "amount": amount,
+                        "token": token
+                    })
+
+                    receiver_balance.amount += transfer.amount
+                    sender_balance.amount -= transfer.amount
 
         latest_block = block
         orm.commit()

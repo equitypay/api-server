@@ -42,4 +42,10 @@
 			{% endif %}
 		</ul>
 	</div>
+
+	<div class="col-md-12">
+		{% for transfer in transaction.transfers %}
+			{% include "elements/transfer.html" %}
+		{% endfor %}
+	</div>
 </div>

@@ -2,12 +2,15 @@ from flask import Blueprint, render_template
 from ..services import TransactionService
 from webargs.flaskparser import use_args
 from ..services import AddressService
+from ..services import TokenService
 from ..services import BlockService
 from flask import redirect, url_for
 from webargs import fields
 from .. import utils
 from pony import orm
 import math
+
+from ..models import Index, Transfer
 
 blueprint = Blueprint("explorer", __name__)
 
@@ -41,8 +44,8 @@ def overview():
         transactions=transactions
     )
 
-@blueprint.route("/e/blocks/", defaults={"page": 1})
-@blueprint.route("/e/blocks/<int:page>")
+@blueprint.route("/list/blocks/", defaults={"page": 1})
+@blueprint.route("/list/blocks/<int:page>")
 @orm.db_session
 def blocks(page):
     size = 30
@@ -60,8 +63,8 @@ def blocks(page):
         blocks=blocks
     )
 
-@blueprint.route("/e/block/<string:blockhash>", defaults={"page": 1})
-@blueprint.route("/e/block/<string:blockhash>/<int:page>")
+@blueprint.route("/get/block/<string:blockhash>", defaults={"page": 1})
+@blueprint.route("/get/block/<string:blockhash>/<int:page>")
 @orm.db_session
 def block(blockhash, page):
     size = 10
@@ -86,8 +89,8 @@ def block(blockhash, page):
 
     return render_template("pages/404.html")
 
-@blueprint.route("/e/transactions", defaults={"page": 1})
-@blueprint.route("/e/transactions/<int:page>")
+@blueprint.route("/list/transactions", defaults={"page": 1})
+@blueprint.route("/list/transactions/<int:page>")
 @orm.db_session
 def transactions(page):
     size = 100
@@ -121,7 +124,7 @@ def transactions(page):
         transactions=transactions
     )
 
-@blueprint.route("/e/transaction/<string:txid>")
+@blueprint.route("/get/transaction/<string:txid>")
 @orm.db_session
 def transaction(txid):
     title = f"Transaction {txid[:16]}..."
@@ -136,14 +139,20 @@ def transaction(txid):
 
     return render_template("pages/404.html")
 
-@blueprint.route("/address/<string:address>", defaults={"page": 1})
-@blueprint.route("/address/<string:address>/<int:page>")
+@blueprint.route("/get/address/<string:address>", defaults={"page": 1})
+@blueprint.route("/get/address/<string:address>/<int:page>")
 @orm.db_session
 def address(address, page):
     size = 10
 
     if (address := AddressService.get_by_address(address)):
-        transactions = address.txs.page(page, pagesize=size)
+        index = address.index.order_by(
+            orm.desc(Index.created)
+        ).page(page, pagesize=size)
+        transactions = []
+
+        for entry in index:
+            transactions.append(entry.transaction)
 
         total = math.ceil(address.txcount / size)
         pagination = utils.pagination(
@@ -157,6 +166,55 @@ def address(address, page):
             "pages/address.html", address=address,
             transactions=transactions,
             pagination=pagination,
+            title=title
+        )
+
+    return render_template("pages/404.html")
+
+@blueprint.route("/list/tokens", defaults={"page": 1})
+@blueprint.route("/list/tokens/<int:page>")
+@orm.db_session
+def tokens(page):
+    size = 100
+
+    tokens = TokenService.list(page, size)
+    count = TokenService.count()
+    total = math.ceil(count / size)
+
+    pagination = utils.pagination(
+        "explorer.tokens", page,
+        size, total
+    )
+
+    return render_template(
+        "pages/tokens.html", pagination=pagination,
+        tokens=tokens
+    )
+
+@blueprint.route("/get/token/<string:address>", defaults={"page": 1})
+@blueprint.route("/get/token/<string:address>/<int:page>")
+@orm.db_session
+def token(address, page):
+    if (token := TokenService.get_by_address(address)):
+        title = f"Token {token.ticker}"
+
+        size = 100
+        total = math.ceil(token.txcount / size)
+
+        transfers = token.transfers.order_by(
+            orm.desc(Transfer.created)
+        ).page(page, size)
+
+        pagination = utils.pagination(
+            "explorer.token", page,
+            size, total
+        )
+
+        return render_template(
+            "pages/token.html",
+            pagination=pagination,
+            transfers=transfers,
+            token=token,
             title=title
         )
 
@@ -182,6 +240,9 @@ def search(args):
 
     return redirect(url_for("explorer.home"))
 
+@blueprint.route("/tx/<string:txid>")
+def tx_redirect(txid):
+    return redirect(url_for("explorer.transaction", txid=txid))
 
 @blueprint.route("/api")
 def api():

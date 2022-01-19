@@ -5,6 +5,54 @@ import config
 
 db = orm.Database(**config.db)
 
+class Index(db.Entity):
+    _table_ = "chain_transaciton_index"
+
+    transaction = orm.Required("Transaction")
+    address = orm.Required("Address")
+    created = orm.Required(datetime)
+
+    orm.composite_index(address, transaction)
+
+class Token(db.Entity):
+    _table_ = "chain_tokens"
+
+    supply = orm.Required(Decimal, precision=20, scale=8)
+    transaction = orm.Required("Transaction")
+    address = orm.Required(str, index=True)
+    issuer = orm.Required("Address")
+    created = orm.Required(datetime)
+    decimals = orm.Required(int)
+    ticker = orm.Required(str)
+    name = orm.Required(str)
+
+    selected = orm.Required(bool, default=False)
+    hidden = orm.Required(bool, default=False)
+
+    balances = orm.Set("TokenBalance")
+    transfers = orm.Set("Transfer")
+
+    @property
+    def txcount(self):
+        return self.transfers.count()
+
+class TokenBalance(db.Entity):
+    _table_ = "chain_token_balances"
+
+    amount = orm.Required(Decimal, precision=20, scale=8, default=0)
+    address = orm.Required("Address")
+    token = orm.Required("Token")
+
+class Transfer(db.Entity):
+    _table_ = "chain_transfers"
+
+    amount = orm.Required(Decimal, precision=20, scale=8, default=0)
+    transaction = orm.Required("Transaction")
+    receiver = orm.Required("Address")
+    sender = orm.Required("Address")
+    created = orm.Required(datetime)
+    token = orm.Required("Token")
+
 class Block(db.Entity):
     _table_ = "chain_blocks"
 
@@ -59,11 +107,15 @@ class Transaction(db.Entity):
     locktime = orm.Required(int)
     size = orm.Required(int)
 
+    transfers = orm.Set("Transfer")
     block = orm.Required("Block")
     outputs = orm.Set("Output")
     inputs = orm.Set("Input")
 
+    created_tokens = orm.Set("Token", reverse="transaction")
     addresses = orm.Set("Address")
+
+    index = orm.Set("Index")
 
     def display(self):
         latest_blocks = Block.select().order_by(
@@ -180,11 +232,18 @@ class Address(db.Entity):
         reverse="addresses"
     )
 
+    issued = orm.Set("Token", reverse="issuer")
+    token_balances = orm.Set("TokenBalance")
     balance = orm.Optional("Balance")
+
+    received = orm.Set("Transfer", reverse="receiver")
+    sent = orm.Set("Transfer", reverse="sender")
+
+    index = orm.Set("Index")
 
     @property
     def txcount(self):
-        return self.transactions.count()
+        return self.index.count()
 
     @property
     def txs(self):

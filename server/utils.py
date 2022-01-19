@@ -1,7 +1,22 @@
+from bitcoinutils.keys import P2pkhAddress
+from bitcoinutils.setup import setup
+from bitcoinutils import constants
 import requests
 import config
 import math
 import json
+
+def hash160_to_address(hash160):
+    constants.NETWORK_SEGWIT_PREFIXES["mainnet"] = "eqpay"
+    constants.NETWORK_P2PKH_PREFIXES["mainnet"] = b"\x21"
+    constants.NETWORK_P2SH_PREFIXES["mainnet"] = b"\x3A"
+    constants.NETWORK_WIF_PREFIXES["mainnet"] = b"\x46"
+
+    setup("mainnet")
+
+    address = P2pkhAddress.from_hash160(hash160)
+
+    return address.to_string()
 
 def dead_response(message="Invalid Request", rid=config.rid):
     return {"error": {"code": 404, "message": message}, "id": rid}
