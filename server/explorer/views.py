@@ -5,12 +5,14 @@ from ..services import AddressService
 from ..services import TokenService
 from ..services import BlockService
 from flask import redirect, url_for
-from webargs import fields
 from .. import utils
+from webargs import fields
 from pony import orm
 import math
 
-from ..models import Index, Transfer
+from datetime import datetime, timedelta
+from ..models import Index, Transfer, Transaction, Balance
+from ..models import ChartTransactions, ChartVolume
 
 blueprint = Blueprint("explorer", __name__)
 
@@ -23,6 +25,21 @@ def overview():
 
     transactions_data = TransactionService.transactions(pagesize=10)
     transactions = []
+
+    start = datetime.utcnow() - timedelta(hours=24)
+
+    stats = {
+        "volume": round(orm.select(t.amount for t in Transaction if t.created > start).sum(), 2),
+        "count": {
+            "transactions": Transaction.select(
+                lambda t: t.created > start
+            ).count(distinct=False),
+            "addresses": Balance.select(
+                lambda b: b.amount > 0
+            ).count(distinct=False)
+        },
+        "supply": supply
+    }
 
     for entry in transactions_data:
         transaction = entry[0]
@@ -40,8 +57,8 @@ def overview():
 
     return render_template(
         "pages/overview.html", latest=latest,
-        supply=supply, blocks=blocks,
-        transactions=transactions
+        blocks=blocks, transactions=transactions,
+        stats=stats
     )
 
 @blueprint.route("/list/blocks/", defaults={"page": 1})
@@ -201,8 +218,12 @@ def token(address, page):
         size = 100
         total = math.ceil(token.txcount / size)
 
-        transfers = token.transfers.order_by(
-            orm.desc(Transfer.created)
+        # transfers = token.transfers.order_by(
+        #     orm.desc(Transfer.created)
+        # ).page(page, size)
+
+        transactions = orm.select(
+            t.transaction for t in Transfer if t.token == token
         ).page(page, size)
 
         pagination = utils.pagination(
@@ -213,7 +234,8 @@ def token(address, page):
         return render_template(
             "pages/token.html",
             pagination=pagination,
-            transfers=transfers,
+            transactions=transactions,
+            # transfers=transfers,
             token=token,
             title=title
         )
@@ -235,14 +257,41 @@ def search(args):
 
             return redirect(url_for("explorer.transaction", txid=args["query"]))
 
+        elif len(args["query"]) == 40:
+            return redirect(url_for("explorer.token", address=args["query"]))
+
         elif len(args["query"]) == 34:
             return redirect(url_for("explorer.address", address=args["query"]))
 
-    return redirect(url_for("explorer.home"))
+    return redirect(url_for("explorer.overview"))
 
 @blueprint.route("/tx/<string:txid>")
 def tx_redirect(txid):
     return redirect(url_for("explorer.transaction", txid=txid))
+
+@blueprint.route("/data/chart")
+@orm.db_session
+def chart():
+    chart_transactions = ChartTransactions.select().order_by(
+        orm.desc(ChartTransactions.time)
+    ).limit(30)
+
+    chart_volume = ChartVolume.select().order_by(
+        orm.desc(ChartVolume.time)
+    ).limit(30)
+
+    chart_data = {
+        "transactions": {
+            "labels": [tx.time.strftime("%d-%m-%Y") for tx in chart_transactions],
+            "data": [tx.value for tx in chart_transactions]
+        },
+        "volume": {
+            "labels": [volume.time.strftime("%d-%m-%Y") for volume in chart_volume],
+            "data": [volume.value for volume in chart_volume]
+        }
+    }
+
+    return utils.response(chart_data)
 
 @blueprint.route("/api")
 def api():

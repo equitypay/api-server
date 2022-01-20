@@ -10,6 +10,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
         <script src=https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js></script>
+        <script src=https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js></script>
 
         {% if title %}
             <title>{{ title }} | EquityPay explorer</title>
@@ -18,6 +19,10 @@
         {% endif%}
 
         <style type="text/css">
+            ul {
+                margin: 0px;
+            }
+
             .pagination a {
                 display: inline-block;
                 padding: 0px 10px;
@@ -31,6 +36,56 @@
             .font-monospace {
                 font-size: 15px;
             }
+
+            .navbar {
+                background-color: #20599a;
+            }
+            .navbar {
+                padding-top: 15px;
+                padding-bottom: 15px;
+            }
+            .navbar img.logo {
+                width: 35px;
+                height: 35px;
+                margin-right: 10px;
+                margin-top: -5px;
+            }
+            .card {
+                border-radius: 0px;
+            }
+
+            .stats {
+                display: flex;
+                justify-content: center;
+                min-height: 100px;
+            }
+
+            .stats .stats-item {
+                text-align: center;
+                margin: auto;
+            }
+
+            .stats .stats-item span {
+                background: #20599a;
+                border-radius: 90px;
+                display: inline-block;
+                color: white;
+                padding: 5px 8px 6px 8px;
+            }
+
+            .stats .stats-item i {
+                font-size: 15px;
+                color: #ffffff;
+            }
+
+            @media (max-width: 767px) {
+                .stats {
+                    flex-wrap: wrap;
+                }
+                .stats .stats-item {
+                    flex: 50%;
+                }
+            }
         </style>
     </head>
     <body>
@@ -43,12 +98,22 @@
         </div>
 
         <script type="text/javascript">
-            const timestamps = document.getElementsByClassName("local-time")
-            for(let i = 0; i < timestamps.length; i++) {
+            let timestamps = document.getElementsByClassName("local-time")
+            for (let i = 0; i < timestamps.length; i++) {
                 let timestamp = timestamps[i];
 
                 let date = new Date(timestamp.getAttribute("time") * 1000)
                 let local = moment(date).local().format("YYYY-MM-DD HH:mm:ss");
+
+                timestamp.textContent = local
+            }
+
+            timestamps = document.getElementsByClassName("local-time-hour")
+            for (let i = 0; i < timestamps.length; i++) {
+                let timestamp = timestamps[i];
+
+                let date = new Date(timestamp.getAttribute("time") * 1000)
+                let local = moment(date).local().format("HH:mm:ss");
 
                 timestamp.textContent = local
             }

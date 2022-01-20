@@ -36,6 +36,12 @@ class Token(db.Entity):
     def txcount(self):
         return self.transfers.count()
 
+    @property
+    def holders(self):
+        balances = TokenBalance.select(lambda b: b.token == self)
+        balances = balances.filter(lambda b: b.amount > 0)
+        return balances.count(distinct=False)
+
 class TokenBalance(db.Entity):
     _table_ = "chain_token_balances"
 
@@ -297,6 +303,18 @@ class Output(db.Entity):
         balance.amount -= self.amount
 
     orm.composite_index(transaction, n)
+
+class ChartTransactions(db.Entity):
+    _table_ = "chain_chart_transactions"
+
+    value = orm.Required(int, default=0)
+    time = orm.Required(datetime)
+
+class ChartVolume(db.Entity):
+    _table_ = "chain_chart_volume"
+
+    value = orm.Required(int, default=0)
+    time = orm.Required(datetime)
 
 
 db.generate_mapping(create_tables=True)

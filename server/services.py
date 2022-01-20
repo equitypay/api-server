@@ -1,3 +1,5 @@
+from .models import ChartTransactions
+from .models import ChartVolume
 from .models import Transaction
 from .models import Address
 from .models import Balance
@@ -156,3 +158,49 @@ class TokenService(object):
     @classmethod
     def get_by_address(cls, address):
         return Token.get(address=address)
+
+class ChartTransactionsService(object):
+    @classmethod
+    def get_by_time(cls, time):
+        return ChartTransactions.get(
+            time=time
+        )
+
+    @classmethod
+    def latest(cls):
+        return ChartTransactions.select().order_by(
+            orm.desc(ChartTransactions.time)
+        ).first()
+
+    @classmethod
+    def create(cls, time, value=0):
+        return ChartTransactions(
+            time=time, value=value
+        )
+
+    @classmethod
+    def list(cls, key):
+        return ChartTransactions.select().order_by(ChartTransactions.time)
+
+class ChartVolumeService(object):
+    @classmethod
+    def get_by_time(cls, time):
+        return ChartVolume.get(
+            time=time
+        )
+
+    @classmethod
+    def latest(cls):
+        return ChartVolume.select().order_by(
+            orm.desc(ChartVolume.time)
+        ).first()
+
+    @classmethod
+    def create(cls, time, value=0):
+        return ChartVolume(
+            time=time, value=value
+        )
+
+    @classmethod
+    def list(cls, key):
+        return ChartVolume.select().order_by(ChartVolume.time)

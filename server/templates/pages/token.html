@@ -45,27 +45,17 @@
 										<td>Decimals</td>
 										<td>{{ token.decimals }}</td>
 									</tr>
+									<tr>
+										<td>Holders</td>
+										<td>{{ token.holders }}</td>
+									</tr>
 								</tbody>
 							</table>
 						</div>
 					</div>
 				</div>
 
-				{% for transfer in transfers %}
-					<div class="card mb-3 fz-14">
-						<div class="card-header">
-							<a href="{{ url_for('explorer.transaction', txid=transfer.transaction.txid) }}" class="font-monospace">
-								{{ transfer.transaction.txid }}
-							</a>
-							<span class="float-md-end d-sm-block">
-								<span class="local-time" time="{{ transfer.created|timestamp }}"></span>
-							</span>
-						</div>
-						<div class="card-body">
-							{% include "elements/transfer.html" %}
-						</div>
-					</div>
-				{% endfor %}
+				{% include "elements/transactions.html" %}
 
 				<div class="mb-3">
 					{% if pagination %}

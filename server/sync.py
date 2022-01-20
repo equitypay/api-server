@@ -1,4 +1,6 @@
+from .services import ChartTransactionsService
 from .methods.transaction import Transaction
+from .services import ChartVolumeService
 from .services import TransactionService
 from .services import BalanceService
 from .methods.general import General
@@ -228,6 +230,20 @@ def sync_blocks():
 
                     receiver_balance.amount += transfer.amount
                     sender_balance.amount -= transfer.amount
+
+            time = utils.datetime_round_day(transaction.created)
+
+            transactions_interval = ChartTransactionsService.get_by_time(time)
+            if not transactions_interval:
+                transactions_interval = ChartTransactionsService.create(time)
+
+            transactions_interval.value += 1
+
+            volume_interval = ChartVolumeService.get_by_time(time)
+            if not volume_interval:
+                volume_interval = ChartVolumeService.create(time)
+
+            volume_interval.value += int(transaction.amount)
 
         latest_block = block
         orm.commit()

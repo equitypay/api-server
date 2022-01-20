@@ -15,6 +15,21 @@
 						</div>
 					</li>
 				{% endfor %}
+
+				{% for transfer in transaction.transfers %}
+					<li>
+						<a href="{{ url_for('explorer.address', address=transfer.sender.address) }}" class="font-monospace">
+							{{ transfer.sender.address }}
+						</a>
+
+						<div>
+							<b>{{ transfer.amount|amount }} {{ transfer.token.ticker }}</b>
+							<a href="{{ url_for('explorer.token', address=transfer.token.address) }}">
+								<i class="fas fa-file-alt"></i>
+							</a>
+						</div>
+					</li>
+				{% endfor %}
 			</ul>
 		{% endif %}
 	</div>
@@ -32,6 +47,21 @@
 				</li>
 			{% endfor %}
 
+			{% for transfer in transaction.transfers %}
+				<li>
+					<a href="{{ url_for('explorer.address', address=transfer.sender.address) }}" class="font-monospace">
+						{{ transfer.receiver.address }}
+					</a>
+
+					<div>
+						<b>{{ transfer.amount|amount }} {{ transfer.token.ticker }}</b>
+						<a href="{{ url_for('explorer.token', address=transfer.token.address) }}">
+							<i class="fas fa-file-alt"></i>
+						</a>
+					</div>
+				</li>
+			{% endfor %}
+
 			{% if transaction.fee > 0 %}
 				<li>
 					<span>Fee:</span>
@@ -41,11 +71,5 @@
 				</li>
 			{% endif %}
 		</ul>
-	</div>
-
-	<div class="col-md-12">
-		{% for transfer in transaction.transfers %}
-			{% include "elements/transfer.html" %}
-		{% endfor %}
 	</div>
 </div>

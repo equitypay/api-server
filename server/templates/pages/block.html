@@ -79,18 +79,8 @@
 						</div>
 					</div>
 				</div>
-				{% for transaction in transactions %}
-					<div class="card mb-3 fz-14">
-						<div class="card-header">
-							<a href="{{ url_for('explorer.transaction', txid=transaction.txid) }}" class="font-monospace">
-								{{ transaction.txid }}
-							</a>
-						</div>
-						<div class="card-body">
-							{% include "elements/details.html" %}
-						</div>
-					</div>
-				{% endfor %}
+
+				{% include "elements/transactions.html" %}
 
 				{% if pagination %}
 					{% if pagination.pages|length > 1 %}

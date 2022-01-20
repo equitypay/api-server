@@ -3,7 +3,7 @@
 	<div class="container">
 		<div class="row">
 			<div class="col-12">
-				<h1 class="h4">EQRC20 Tokens</h1>
+				<h1 class="h4">Tokens</h1>
 
 				<div class="table-responsive">
 					<table class="table table-striped table-hover">
@@ -14,6 +14,7 @@
 								<th scope="col">Contract address</th>
 								<th scope="col">Created</th>
 								<th scope="col">Supply</th>
+								<th scope="col">Holders</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -35,6 +36,9 @@
 									</td>
 									<td>
 										{{ token.supply|amount }} {{ token.ticker }}
+									</td>
+									<td>
+										{{ token.holders }}
 									</td>
 								</tr>
 							{% endfor %}
