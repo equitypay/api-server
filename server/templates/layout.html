@@ -12,6 +12,9 @@
         <script src=https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js></script>
         <script src=https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js></script>
 
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
         {% if title %}
             <title>{{ title }} | EquityPay explorer</title>
         {% else %}
@@ -19,6 +22,10 @@
         {% endif%}
 
         <style type="text/css">
+            #map {
+                height: 640px;
+            }
+
             ul {
                 margin: 0px;
             }
@@ -44,7 +51,7 @@
                 padding-top: 15px;
                 padding-bottom: 15px;
             }
-            .navbar img.logo {
+            img.logo {
                 width: 35px;
                 height: 35px;
                 margin-right: 10px;
@@ -85,6 +92,13 @@
                 .stats .stats-item {
                     flex: 50%;
                 }
+                #map {
+                    height: 340px;
+                }
+            }
+
+            footer {
+                background-color: #20599a;
             }
         </style>
     </head>
@@ -93,9 +107,96 @@
 
         {% block content %}{% endblock %}
 
-        <div class="text-center mb-3 mt-3">
-            Copyright © 2022 | EquityPay Explorer
-        </div>
+        <footer class="text-white mt-3">
+            <div class="container p-3">
+                <!-- <section class="mb-3">
+                    <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button">
+                        <i class="fab fa-google"></i>
+                    </a>
+                    <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                    <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button">
+                        <i class="fab fa-github"></i>
+                    </a>
+                </section>
+
+                <section>
+                    Equitypay is a decentralized payment platform for both public and private transactions worldwide. The platform was designed especially for entrepreneurs who are looking for a platform to service their clients with fairness and honesty. Equitypay also has relationship with “Business Partners” who are creating web-platform to service entrepreneurs for future generations.
+                </section> -->
+
+                <section class="">
+                    <div class="row">
+                        <div class="col-lg-6 col-md-6 mb-4 mb-md-0">
+                            <h5 class="text-uppercase">About Us</h5>
+
+                            <p>Equitypay is a decentralized payment platform for both public and private transactions worldwide. The platform was designed especially for entrepreneurs who are looking for a platform to service their clients with fairness and honesty. Equitypay also has relationship with “Business Partners” who are creating web-platform to service entrepreneurs for future generations.</p>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                            <h5 class="text-uppercase">Follow Us</h5>
+
+                            <ul class="list-unstyled mb-0">
+                                <li>
+                                    <a target="_blank" href="https://www.facebook.com/EquityPay/" class="text-white">Facebook</a>
+                                </li>
+                                <li>
+                                    <a target="_blank" href="https://twitter.com/EquityPay_Org" class="text-white">Twitter</a>
+                                </li>
+                                <li>
+                                    <a target="_blank" href="https://discord.gg/bN2Qa7GjX5" class="text-white">Discord</a>
+                                </li>
+                                <li>
+                                    <a target="_blank" href="http://t.me/equitypay" class="text-white">Telegram</a>
+                                </li>
+                                <li>
+                                    <a target="_blank" href="https://www.reddit.com/r/EquityPay/" class="text-white">Reddit</a>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                            <h5 class="text-uppercase">Build with Us</h5>
+
+                            <ul class="list-unstyled mb-0">
+                                <li>
+                                    <a target="_blank" href="https://dragonfly.mobi/" class="text-white">
+                                        Dragonfly Mobile App
+                                    </a>
+                                    <a target="_blank" href="https://www.facebook.com/Dragonfly.smartwallet" class="text-white">
+                                        Dragonfly Facebook
+                                    </a>
+                                    <a target="_blank" href="https://equitypay.live" class="text-white">
+                                        Equitypay Website
+                                    </a>
+                                    <a target="_blank" href="https://github.com/equitypay/eqpay" class="text-white">
+                                        Github
+                                    </a>
+                                    <a target="_blank" href="https://equitypay.live" class="text-white">
+                                        Network Node Map
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div>
+                        <img class="logo" src="/static/img/logo.svg">
+                    </div>
+                </section>
+            </div>
+            <div class="text-center p-3" style="background-color: rgba(0, 0, 0, 0.2);">
+                Copyright © 2022 | EquityPay Explorer
+            </div>
+        </footer>
 
         <script type="text/javascript">
             let timestamps = document.getElementsByClassName("local-time")

@@ -10,9 +10,12 @@ from .services import InputService
 from .services import BlockService
 from .services import IndexService
 from .methods.block import Block
+from server.models import Peer
 from datetime import datetime
 from pony import orm
 from . import utils
+import requests
+import json
 
 from .models import Token, TokenBalance, Transfer
 
@@ -41,6 +44,63 @@ def rollback_blocks(height):
         orm.commit()
 
     log_message("Finised rollback")
+
+@orm.db_session
+def sync_peers():
+    log_message("Syncing peers")
+
+    data = utils.make_request("getpeerinfo")
+
+    if not data["error"]:
+        batch = []
+
+        for peer_data in data["result"]:
+            address = peer_data["addr"].split(":")
+
+            if len(address) != 2:
+                continue
+
+            batch.append({"query": address[0]})
+
+        r = requests.post("http://ip-api.com/batch?fields=lat,lon,country,countryCode,city", headers={
+            "content-type": "text/plain;"
+        }, data=json.dumps(batch))
+        geo_data = r.json()
+
+        index = 0
+        for peer_data in data["result"]:
+            address = peer_data["addr"].split(":")
+
+            if len(address) != 2:
+                continue
+
+            peer = Peer.get(address=address[0])
+
+            if not peer:
+                Peer(**{
+                    "address": address[0],
+                    "port": address[1],
+                    "subver": peer_data["subver"],
+                    "height": peer_data["synced_blocks"],
+                    "country": geo_data[index]["country"],
+                    "code": geo_data[index]["countryCode"],
+                    "city": geo_data[index]["city"],
+                    "lat": geo_data[index]["lat"],
+                    "lon": geo_data[index]["lon"]
+                })
+
+            else:
+                peer.address = address[0]
+                peer.port = address[1]
+                peer.subver = peer_data["subver"]
+                peer.height = peer_data["synced_blocks"]
+                peer.country = geo_data[index]["country"]
+                peer.code = geo_data[index]["countryCode"]
+                peer.city = geo_data[index]["city"]
+                peer.lat = geo_data[index]["lat"]
+                peer.lon = geo_data[index]["lon"]
+
+            index += 1
 
 @orm.db_session
 def sync_blocks():

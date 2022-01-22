@@ -83,39 +83,45 @@
 				url: "{{ url_for("explorer.chart") }}",
 				success: function(data) {
 					const volume = new Chart(ctx_volume, {
-					    type: "bar",
-					    data: {
-					        labels: data.result.volume.labels.reverse(),
-					        datasets: [{
-					            label: " EQPAY volume",
-					            data: data.result.volume.data.reverse(),
-					            borderWidth: 1,
-					            backgroundColor: "rgb(32,89,154)",
-					            borderColor: "rgb(32,89,154)",
-					            minBarLength: 5
-					        }]
-					    },
-					    options: {
-					        scales: {
-					            y: {
-					                beginAtZero: true
-					            }
-					        }
-					    }
+						type: "bar",
+						data: {
+							labels: data.result.volume.labels.reverse(),
+							datasets: [{
+								label: " EQPAY volume",
+								data: data.result.volume.data.reverse(),
+								borderWidth: 1,
+								backgroundColor: "rgb(32,89,154)",
+								borderColor: "rgb(32,89,154)",
+								minBarLength: 5
+							}]
+						},
+						options: {
+							scales: {
+								y: {
+									beginAtZero: true
+								}
+							}
+						}
 					})
 
 					const transactions = new Chart(ctx_transactions, {
-					    type: "line",
-					    data: {
-					        labels: data.result.transactions.labels.reverse(),
-					        datasets: [{
-					            label: " Transaction",
-					            data: data.result.transactions.data.reverse(),
-					            backgroundColor: "rgb(32,89,154)",
-					            borderColor: "rgb(32,89,154)",
-					        }]
-					    },
-					    options: {}
+						type: "line",
+						data: {
+							labels: data.result.transactions.labels.reverse(),
+							datasets: [{
+								label: " Transaction",
+								data: data.result.transactions.data.reverse(),
+								backgroundColor: "rgb(32,89,154)",
+								borderColor: "rgb(32,89,154)",
+							}]
+						},
+						options: {
+							scales: {
+								y: {
+									beginAtZero: true
+								}
+							}
+						}
 					})
 				}
 			})

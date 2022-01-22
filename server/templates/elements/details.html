@@ -30,6 +30,14 @@
 						</div>
 					</li>
 				{% endfor %}
+
+				{% for token in transaction.created_tokens %}
+					<li>
+						Created token <b>{{ token.ticker }}</b> <a href="{{ url_for('explorer.token', address=token.address) }}">
+							<i class="fas fa-file-alt"></i>
+						</a>
+					</li>
+				{% endfor %}
 			</ul>
 		{% endif %}
 	</div>
@@ -60,6 +68,19 @@
 						</a>
 					</div>
 				</li>
+			{% endfor %}
+
+			{% for token in transaction.created_tokens %}
+				<a href="{{ url_for('explorer.address', address=token.issuer.address) }}" class="font-monospace">
+					{{ token.issuer.address }}
+				</a>
+
+				<div>
+					<b>{{ token.supply|amount }} {{ token.ticker }}</b>
+					<a href="{{ url_for('explorer.token', address=token.address) }}">
+						<i class="fas fa-file-alt"></i>
+					</a>
+				</div>
 			{% endfor %}
 
 			{% if transaction.fee > 0 %}

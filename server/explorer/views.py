@@ -10,8 +10,8 @@ from webargs import fields
 from pony import orm
 import math
 
-from datetime import datetime, timedelta
-from ..models import Index, Transfer, Transaction, Balance
+from datetime import timedelta
+from ..models import Index, Transfer, Transaction, Balance, Peer
 from ..models import ChartTransactions, ChartVolume
 
 blueprint = Blueprint("explorer", __name__)
@@ -26,7 +26,7 @@ def overview():
     transactions_data = TransactionService.transactions(pagesize=10)
     transactions = []
 
-    start = datetime.utcnow() - timedelta(hours=24)
+    start = latest.created - timedelta(hours=24)
 
     stats = {
         "volume": round(orm.select(t.amount for t in Transaction if t.created > start).sum(), 2),
@@ -208,6 +208,14 @@ def tokens(page):
         tokens=tokens
     )
 
+@blueprint.route("/get/map")
+@orm.db_session
+def peers_map():
+    peers = Peer.select()
+    return render_template(
+        "pages/map.html", peers=peers
+    )
+
 @blueprint.route("/get/token/<string:address>", defaults={"page": 1})
 @blueprint.route("/get/token/<string:address>/<int:page>")
 @orm.db_session
@@ -217,10 +225,6 @@ def token(address, page):
 
         size = 100
         total = math.ceil(token.txcount / size)
-
-        # transfers = token.transfers.order_by(
-        #     orm.desc(Transfer.created)
-        # ).page(page, size)
 
         transactions = orm.select(
             t.transaction for t in Transfer if t.token == token
@@ -292,6 +296,27 @@ def chart():
     }
 
     return utils.response(chart_data)
+
+@blueprint.route("/data/peers")
+@orm.db_session
+def peers():
+    peers = []
+
+    for peer in Peer.select():
+        peers.append({
+            "last": peer.last,
+            "address": peer.address,
+            "country": peer.country,
+            "subver": peer.subver,
+            "height": peer.height,
+            "code": peer.code,
+            "city": peer.city,
+            "port": peer.port,
+            "lat": peer.lat,
+            "lon": peer.lon
+        })
+
+    return utils.response(peers)
 
 @blueprint.route("/api")
 def api():

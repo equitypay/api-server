@@ -5,6 +5,20 @@ import config
 
 db = orm.Database(**config.db)
 
+class Peer(db.Entity):
+    _table_ = "chain_peers"
+
+    last = orm.Required(datetime, default=datetime.utcnow)
+    country = orm.Required(str)
+    address = orm.Required(str)
+    subver = orm.Required(str)
+    height = orm.Required(int)
+    lat = orm.Required(float)
+    lon = orm.Required(float)
+    port = orm.Required(int)
+    city = orm.Required(str)
+    code = orm.Required(str)
+
 class Index(db.Entity):
     _table_ = "chain_transaciton_index"
 
