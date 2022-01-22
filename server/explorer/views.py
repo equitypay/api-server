@@ -23,8 +23,8 @@ def overview():
     supply_data = utils.supply(latest.height)
     supply = utils.amount(supply_data["supply"])
 
-    transactions_data = TransactionService.transactions(pagesize=10)
-    transactions = []
+    transactions = TransactionService.transactions_frontend(pagesize=10)
+    # transactions = []
 
     start = latest.created - timedelta(hours=24)
 
@@ -41,17 +41,17 @@ def overview():
         "supply": supply
     }
 
-    for entry in transactions_data:
-        transaction = entry[0]
-        amount = entry[1]
+    # for entry in transactions_data:
+    #     transaction = entry[0]
+    #     amount = entry[1]
 
-        transactions.append({
-            "height": transaction.block.height,
-            "blockhash": transaction.block.blockhash,
-            "timestamp": transaction.block.created.timestamp(),
-            "txid": transaction.txid,
-            "amount": amount
-        })
+    #     transactions.append({
+    #         "height": transaction.block.height,
+    #         "blockhash": transaction.block.blockhash,
+    #         "timestamp": transaction.block.created.timestamp(),
+    #         "txid": transaction.txid,
+    #         "amount": amount
+    #     })
 
     blocks = BlockService.blocks(pagesize=10)
 

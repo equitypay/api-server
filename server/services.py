@@ -81,6 +81,12 @@ class TransactionService(object):
         return query.page(page, pagesize=pagesize)
 
     @classmethod
+    def transactions_frontend(cls, page=1, pagesize=100):
+        return Transaction.select().order_by(
+            orm.desc(Transaction.created)
+        ).page(page, pagesize=pagesize)
+
+    @classmethod
     def total_transactions(cls):
         query = orm.select((orm.count(o.transaction)) for o in Output).distinct()
         return query.first()

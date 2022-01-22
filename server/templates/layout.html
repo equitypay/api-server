@@ -22,6 +22,20 @@
         {% endif%}
 
         <style type="text/css">
+            html, body {
+                height: 100%;
+            }
+            body {
+                display: flex;
+                flex-direction: column;
+            }
+            .explorer {
+                flex: 1 0 auto;
+            }
+                footer {
+                flex-shrink: 0;
+            }
+
             #map {
                 height: 640px;
             }
@@ -105,7 +119,9 @@
     <body>
         {% include "elements/nav.html" %}
 
-        {% block content %}{% endblock %}
+        <div class="explorer">
+            {% block content %}{% endblock %}
+        </div>
 
         <footer class="text-white mt-3">
             <div class="container p-3">
