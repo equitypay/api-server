@@ -99,6 +99,7 @@ def sync_peers():
                 peer.city = geo_data[index]["city"]
                 peer.lat = geo_data[index]["lat"]
                 peer.lon = geo_data[index]["lon"]
+                peer.last = datetime.utcnow()
 
             index += 1
 
