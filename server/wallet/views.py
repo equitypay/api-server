@@ -4,13 +4,17 @@ from bitcoinutils.keys import PrivateKey, P2pkhAddress
 from webargs.flaskparser import use_args
 from bitcoinutils.script import Script
 from ..methods.address import Address
+from ..services import AddressService
 from bitcoinutils.setup import setup
+from webargs import fields, validate
 from bitcoinutils import constants
 from base58check import b58encode
 from flask import Blueprint
-from webargs import fields
+from pony import orm
 from .. import utils
 import hashlib
+
+from ..models import Index
 
 constants.NETWORK_SEGWIT_PREFIXES["mainnet"] = "eqpay"
 constants.NETWORK_P2PKH_PREFIXES["mainnet"] = b"\x21"
@@ -30,6 +34,11 @@ send_args = {
     "amount": fields.Int(required=True),
     "destination": fields.Str(required=True),
     "fee": fields.Int(missing=10000000)
+}
+
+history_args = {
+    "size": fields.Int(missing=10, validate=validate.Range(min=1, max=100)),
+    "page": fields.Int(missing=1, validate=validate.Range(min=1))
 }
 
 def to_wif(secret, salt):
@@ -135,6 +144,84 @@ def send(args):
     return NodeTransaction.broadcast(
         tx.serialize()
     )
+
+@blueprint.route("/history/<string:raw_address>", methods=["GET"])
+@use_args(history_args, location="query")
+@orm.db_session
+def history(args, raw_address):
+    result = {}
+    transactions = []
+
+    if (address := AddressService.get_by_address(raw_address)):
+        index = address.index.order_by(
+            orm.desc(Index.created)
+        ).page(args["page"], pagesize=args["size"])
+
+        for entry in index:
+            tx_data = entry.transaction.display()
+
+            result = {
+                "category": "",
+                "amount": 0,
+                "timestamp": tx_data["timestamp"],
+                "txid": tx_data["txid"],
+            }
+
+            inputs = {}
+            outputs = {}
+
+            for vin in tx_data["inputs"]:
+                if vin["address"] not in inputs:
+                    inputs[vin["address"]] = 0
+
+                inputs[vin["address"]] += vin["amount"]
+
+            for vout in tx_data["outputs"]:
+                if vout["address"] not in outputs:
+                    outputs[vout["address"]] = 0
+
+                outputs[vout["address"]] += vout["amount"]
+            
+            if tx_data["coinbase"] or tx_data["coinstake"]:
+                result["category"] = "reward"
+
+                amount = 0
+
+                if raw_address in inputs:
+                    amount = outputs[raw_address] - inputs[raw_address]
+                else:
+                    amount = outputs[raw_address]
+
+                result["amount"] = round(amount, 8)
+                
+            else:
+                sent = {}
+                received = {}
+
+                for vin in inputs:
+                    if vin not in sent:
+                        sent[vin] = inputs[vin]
+
+                for vout in outputs:
+                    if vout in sent:
+                        sent[vout] -= outputs[vout]
+
+                    else:
+                        received[vout] = outputs[vout]
+
+                if raw_address in sent:
+                    result["category"] = "send"
+                    result["amount"] = round(sent[raw_address], 8)
+
+                else:
+                    result["category"] = "receive"
+                    result["amount"] = round(received[raw_address], 8)
+
+            transactions.append(result)
+
+    return {
+        "transactions": transactions
+    }
 
 def init(app):
     app.register_blueprint(blueprint, url_prefix="/wallet")
