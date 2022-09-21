@@ -211,7 +211,7 @@ def history(args, raw_address):
 
                 if raw_address in sent:
                     result["category"] = "send"
-                    result["amount"] = round(sent[raw_address], 8)
+                    result["amount"] = -round(sent[raw_address], 8)
 
                 else:
                     result["category"] = "receive"
