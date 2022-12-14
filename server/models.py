@@ -3,6 +3,8 @@ from decimal import Decimal
 from pony import orm
 import config
 
+MEMPOOL_HEIGHT = -1
+
 db = orm.Database(**config.db)
 
 class Peer(db.Entity):
@@ -97,6 +99,9 @@ class Block(db.Entity):
 
     @property
     def confirmations(self):
+        if self.height == MEMPOOL_HEIGHT:
+            return 0
+
         latest_blocks = Block.select().order_by(
             orm.desc(Block.height)
         ).first()
@@ -123,12 +128,13 @@ class Transaction(db.Entity):
     coinstake = orm.Required(bool, default=False)
     coinbase = orm.Required(bool, default=False)
     txid = orm.Required(str, index=True)
+    height = orm.Required(int, size=64)
     created = orm.Required(datetime)
     locktime = orm.Required(int)
     size = orm.Required(int)
 
     transfers = orm.Set("Transfer")
-    block = orm.Required("Block")
+    block = orm.Optional("Block")
     outputs = orm.Set("Output")
     inputs = orm.Set("Input")
 
@@ -172,8 +178,8 @@ class Transaction(db.Entity):
             "timestamp": int(self.created.timestamp()),
             "amount": float(self.amount),
             "coinstake": self.coinstake,
-            "height": self.block.height,
             "coinbase": self.coinbase,
+            "height": self.height,
             "txid": self.txid,
             "size": self.size,
             "outputs": outputs,
@@ -296,8 +302,10 @@ class Output(db.Entity):
     _table_ = "chain_outputs"
 
     amount = orm.Required(Decimal, precision=20, scale=8)
+    amount_raw = orm.Required(int, size=64)
     address = orm.Required("Address")
     category = orm.Optional(str)
+    txid = orm.Required(str)
     raw = orm.Optional(str)
     n = orm.Required(int)
 

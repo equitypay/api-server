@@ -66,12 +66,13 @@ class TransactionService(object):
         return Transaction.get(txid=txid)
 
     @classmethod
-    def create(cls, amount, txid, created, locktime, size, block,
+    def create(cls, amount, txid, created, locktime, size, height, block=None,
                coinbase=False, coinstake=False):
         return Transaction(
             amount=amount, txid=txid, created=created,
             locktime=locktime, size=size, coinbase=coinbase,
-            coinstake=coinstake, block=block
+            coinstake=coinstake, block=block,
+            height=height
         )
 
     @classmethod
@@ -141,10 +142,13 @@ class OutputService(object):
         return Output.get(transaction=transaction, n=n)
 
     @classmethod
-    def create(cls, transaction, amount, category, address, raw, n):
+    def create(
+        cls, transaction, amount, amount_raw, category,
+        address, raw, txid, n
+    ):
         return Output(
-            transaction=transaction, amount=amount, category=category,
-            address=address, raw=raw, n=n
+            transaction=transaction, amount=amount, amount_raw=amount_raw,
+            category=category, address=address, raw=raw, txid=txid, n=n
         )
 
 class TokenService(object):

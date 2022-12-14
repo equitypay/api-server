@@ -1,3 +1,4 @@
+from .models import Token, TokenBalance, Transfer
 from .services import ChartTransactionsService
 from .methods.transaction import Transaction
 from .services import ChartVolumeService
@@ -17,7 +18,7 @@ from . import utils
 import requests
 import json
 
-from .models import Token, TokenBalance, Transfer
+MEMPOOL_HEIGHT = -1
 
 TRANSFER_TOPIC = "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
@@ -29,6 +30,181 @@ def log_block(message, block, tx=[]):
 def log_message(message):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"{now} {message}")
+
+def check_mempool_invalid(txid):
+    tx_data = Transaction.info(txid, False)["result"]
+
+    for vin in tx_data["vin"]:
+        if "coinbase" in vin:
+            continue
+        
+        prev_tx = TransactionService.get_by_txid(vin["txid"])
+        output = OutputService.get_by_prev(prev_tx, vin["vout"])
+
+        if output.spent:
+            conflic_txid = output.vin.transaction.txid
+            log_message(f"Deleting conflicting transaction {conflic_txid}")
+            output.vin.transaction.delete()
+
+def process_transaction(txid, block=None, index=None):
+    tx_data = Transaction.info(txid, False)["result"]
+    created = datetime.fromtimestamp(tx_data["time"])
+
+    transaction_height = MEMPOOL_HEIGHT
+    coinstake = False
+    coinbase = False
+
+    if block:
+        coinbase = block.stake is False and index == 0
+        coinstake = block.stake and index == 1
+        transaction_height = block.height
+
+    transaction = TransactionService.create(
+        utils.amount(tx_data["amount"]), tx_data["txid"],
+        created, tx_data["locktime"], tx_data["size"], transaction_height,
+        block, coinbase, coinstake
+    )
+
+    for vin in tx_data["vin"]:
+        if "coinbase" in vin:
+            continue
+
+        prev_tx = TransactionService.get_by_txid(vin["txid"])
+        prev_out = OutputService.get_by_prev(prev_tx, vin["vout"])
+
+        prev_out.address.transactions.add(transaction)
+        balance = BalanceService.get(prev_out.address)
+        balance.amount -= prev_out.amount
+
+        IndexService.create(prev_out.address, transaction)
+
+        InputService.create(
+            vin["sequence"], vin["vout"], transaction, prev_out
+        )
+
+    for vout in tx_data["vout"]:
+        if vout["scriptPubKey"]["type"] in ["nonstandard", "nulldata"]:
+            continue
+
+        if "addresses" not in vout["scriptPubKey"]:
+            continue
+
+        if len(vout["scriptPubKey"]["addresses"]) == 0:
+            continue
+
+        amount_raw = vout["value"]
+        amount = utils.amount(vout["value"])
+        script = vout["scriptPubKey"]["addresses"][0]
+
+        if not (address := AddressService.get_by_address(script)):
+            address = AddressService.create(script)
+
+        address.transactions.add(transaction)
+
+        IndexService.create(address, transaction)
+
+        output = OutputService.create(
+            transaction, amount, amount_raw, vout["scriptPubKey"]["type"],
+            address, vout["scriptPubKey"]["hex"],
+            txid, vout["n"]
+        )
+
+        if not (balance := BalanceService.get(address)):
+            balance = BalanceService.create(address)
+
+        balance.amount += output.amount
+
+    receipts = utils.make_request("gettransactionreceipt", [transaction.txid])
+
+    for receipt in receipts["result"]:
+        address_from = utils.hash160_to_address(receipt["from"])
+
+        for contract in receipt["createdContracts"]:
+            contract_address = contract["address"]
+
+            data = utils.make_request("eqrc20info", [contract_address])
+            if data["error"]:
+                continue
+
+            if not (issuer := AddressService.get_by_address(address_from)):
+                issuer = AddressService.create(address_from)
+
+            IndexService.create(issuer, transaction)
+
+            info = data["result"]
+
+            token = Token(**{
+                "created": transaction.created,
+                "supply": float(info["supply"]),
+                "decimals": info["decimals"],
+                "address": contract_address,
+                "transaction": transaction,
+                "ticker": info["symbol"],
+                "name": info["name"],
+                "issuer": issuer
+            })
+
+            TokenBalance(**{
+                "amount": token.supply,
+                "address": issuer,
+                "token": token
+            })
+
+        for log in receipt["log"]:
+            if not (token := Token.get(address=log["address"])):
+                continue
+
+            if len(log["topics"]) != 3:
+                continue
+
+            if log["topics"][0] != TRANSFER_TOPIC:
+                continue
+
+            receiver_hash160 = log["topics"][2][-40:]
+            address_to = utils.hash160_to_address(receiver_hash160)
+            raw_amount = int(log["data"], 16)
+            amount = utils.amount(raw_amount, token.decimals)
+
+            if not (sender := AddressService.get_by_address(address_from)):
+                sender = AddressService.create(address_from)
+
+            if not (receiver := AddressService.get_by_address(address_to)):
+                receiver = AddressService.create(address_to)
+
+            if not (sender_balance := TokenBalance.get(address=sender, token=token)):
+                sender_balance = TokenBalance(address=sender, token=token)
+
+            if not (receiver_balance := TokenBalance.get(address=receiver, token=token)):
+                receiver_balance = TokenBalance(address=receiver, token=token)
+
+            IndexService.create(sender, transaction)
+            IndexService.create(receiver, transaction)
+
+            transfer = Transfer(**{
+                "created": transaction.created,
+                "transaction": transaction,
+                "receiver": receiver,
+                "sender": sender,
+                "amount": amount,
+                "token": token
+            })
+
+            receiver_balance.amount += transfer.amount
+            sender_balance.amount -= transfer.amount
+
+    time = utils.datetime_round_day(transaction.created)
+
+    transactions_interval = ChartTransactionsService.get_by_time(time)
+    if not transactions_interval:
+        transactions_interval = ChartTransactionsService.create(time)
+
+    transactions_interval.value += 1
+
+    volume_interval = ChartVolumeService.get_by_time(time)
+    if not volume_interval:
+        volume_interval = ChartVolumeService.create(time)
+
+    volume_interval.value += int(transaction.amount)
 
 @orm.db_session
 def rollback_blocks(height):
@@ -155,156 +331,24 @@ def sync_blocks():
             if block.stake and index == 0:
                 continue
 
-            tx_data = Transaction.info(txid, False)["result"]
-            created = datetime.fromtimestamp(tx_data["time"])
-            coinbase = block.stake is False and index == 0
-            coinstake = block.stake and index == 1
+            # Confirm mempool transaction
+            if transaction := TransactionService.get_by_txid(txid=txid):
+                transaction.height = block.height
+                transaction.block = block
+                continue
 
-            transaction = TransactionService.create(
-                utils.amount(tx_data["amount"]), tx_data["txid"],
-                created, tx_data["locktime"], tx_data["size"], block,
-                coinbase, coinstake
-            )
+            check_mempool_invalid(txid)
 
-            for vin in tx_data["vin"]:
-                if "coinbase" in vin:
-                    continue
-
-                prev_tx = TransactionService.get_by_txid(vin["txid"])
-                prev_out = OutputService.get_by_prev(prev_tx, vin["vout"])
-
-                prev_out.address.transactions.add(transaction)
-                balance = BalanceService.get(prev_out.address)
-                balance.amount -= prev_out.amount
-
-                IndexService.create(prev_out.address, transaction)
-
-                InputService.create(
-                    vin["sequence"], vin["vout"], transaction, prev_out
-                )
-
-            for vout in tx_data["vout"]:
-                if vout["scriptPubKey"]["type"] in ["nonstandard", "nulldata"]:
-                    continue
-
-                if "addresses" not in vout["scriptPubKey"]:
-                    continue
-
-                if len(vout["scriptPubKey"]["addresses"]) == 0:
-                    continue
-
-                amount = utils.amount(vout["valueSat"])
-                script = vout["scriptPubKey"]["addresses"][0]
-
-                if not (address := AddressService.get_by_address(script)):
-                    address = AddressService.create(script)
-
-                address.transactions.add(transaction)
-
-                IndexService.create(address, transaction)
-
-                output = OutputService.create(
-                    transaction, amount, vout["scriptPubKey"]["type"],
-                    address, vout["scriptPubKey"]["hex"],
-                    vout["n"]
-                )
-
-                if not (balance := BalanceService.get(address)):
-                    balance = BalanceService.create(address)
-
-                balance.amount += output.amount
-
-            receipts = utils.make_request("gettransactionreceipt", [transaction.txid])
-
-            for receipt in receipts["result"]:
-                address_from = utils.hash160_to_address(receipt["from"])
-
-                for contract in receipt["createdContracts"]:
-                    contract_address = contract["address"]
-
-                    data = utils.make_request("eqrc20info", [contract_address])
-                    if data["error"]:
-                        continue
-
-                    if not (issuer := AddressService.get_by_address(address_from)):
-                        issuer = AddressService.create(address_from)
-
-                    IndexService.create(issuer, transaction)
-
-                    info = data["result"]
-
-                    token = Token(**{
-                        "created": transaction.created,
-                        "supply": float(info["supply"]),
-                        "decimals": info["decimals"],
-                        "address": contract_address,
-                        "transaction": transaction,
-                        "ticker": info["symbol"],
-                        "name": info["name"],
-                        "issuer": issuer
-                    })
-
-                    TokenBalance(**{
-                        "amount": token.supply,
-                        "address": issuer,
-                        "token": token
-                    })
-
-                for log in receipt["log"]:
-                    if not (token := Token.get(address=log["address"])):
-                        continue
-
-                    if len(log["topics"]) != 3:
-                        continue
-
-                    if log["topics"][0] != TRANSFER_TOPIC:
-                        continue
-
-                    receiver_hash160 = log["topics"][2][-40:]
-                    address_to = utils.hash160_to_address(receiver_hash160)
-                    raw_amount = int(log["data"], 16)
-                    amount = utils.amount(raw_amount, token.decimals)
-
-                    if not (sender := AddressService.get_by_address(address_from)):
-                        sender = AddressService.create(address_from)
-
-                    if not (receiver := AddressService.get_by_address(address_to)):
-                        receiver = AddressService.create(address_to)
-
-                    if not (sender_balance := TokenBalance.get(address=sender, token=token)):
-                        sender_balance = TokenBalance(address=sender, token=token)
-
-                    if not (receiver_balance := TokenBalance.get(address=receiver, token=token)):
-                        receiver_balance = TokenBalance(address=receiver, token=token)
-
-                    IndexService.create(sender, transaction)
-                    IndexService.create(receiver, transaction)
-
-                    transfer = Transfer(**{
-                        "created": transaction.created,
-                        "transaction": transaction,
-                        "receiver": receiver,
-                        "sender": sender,
-                        "amount": amount,
-                        "token": token
-                    })
-
-                    receiver_balance.amount += transfer.amount
-                    sender_balance.amount -= transfer.amount
-
-            time = utils.datetime_round_day(transaction.created)
-
-            transactions_interval = ChartTransactionsService.get_by_time(time)
-            if not transactions_interval:
-                transactions_interval = ChartTransactionsService.create(time)
-
-            transactions_interval.value += 1
-
-            volume_interval = ChartVolumeService.get_by_time(time)
-            if not volume_interval:
-                volume_interval = ChartVolumeService.create(time)
-
-            volume_interval.value += int(transaction.amount)
+            process_transaction(txid, block, index)
 
         latest_block = block
         orm.commit()
+
+@orm.db_session
+def sync_mempool():
+    mempool = General.mempool()["result"]
+
+    for txid in mempool["tx"]:
+        if not TransactionService.get_by_txid(txid):
+            process_transaction(txid)
+            orm.commit()
