@@ -21,6 +21,8 @@ constants.NETWORK_P2PKH_PREFIXES["mainnet"] = b"\x21"
 constants.NETWORK_P2SH_PREFIXES["mainnet"] = b"\x3A"
 constants.NETWORK_WIF_PREFIXES["mainnet"] = b"\x46"
 
+DEFAULT_FEE = 10000000
+
 blueprint = Blueprint("wallet", __name__, url_prefix="/wallet")
 
 secret_args = {
@@ -33,7 +35,7 @@ send_args = {
     "salt": fields.Str(required=True),
     "amount": fields.Int(required=True),
     "destination": fields.Str(required=True),
-    "fee": fields.Int(missing=10000000)
+    "fee": fields.Int(missing=DEFAULT_FEE)
 }
 
 history_args = {
@@ -222,6 +224,12 @@ def history(args, raw_address):
     return {
         "transactions": transactions
     }
+
+@blueprint.route("/fee", methods=["GET"])
+def fee():
+    return utils.response({
+        "fee": DEFAULT_FEE
+    })
 
 def init(app):
     app.register_blueprint(blueprint, url_prefix="/wallet")
