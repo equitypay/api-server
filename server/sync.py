@@ -349,7 +349,7 @@ def sync_mempool():
     current_height = General.current_height()
     latest_block = BlockService.latest_block()
 
-    if latest_block + 5 < current_height:
+    if latest_block.height + 5 < current_height:
         return
 
     mempool = General.mempool()["result"]
