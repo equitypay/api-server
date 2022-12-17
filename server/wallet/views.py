@@ -10,18 +10,16 @@ from webargs import fields, validate
 from bitcoinutils import constants
 from base58check import b58encode
 from flask import Blueprint
+from ..models import Index
 from pony import orm
 from .. import utils
 import hashlib
-
-from ..models import Index
+import config
 
 constants.NETWORK_SEGWIT_PREFIXES["mainnet"] = "eqpay"
 constants.NETWORK_P2PKH_PREFIXES["mainnet"] = b"\x21"
 constants.NETWORK_P2SH_PREFIXES["mainnet"] = b"\x3A"
 constants.NETWORK_WIF_PREFIXES["mainnet"] = b"\x46"
-
-DEFAULT_FEE = 10000000
 
 blueprint = Blueprint("wallet", __name__, url_prefix="/wallet")
 
@@ -35,7 +33,7 @@ send_args = {
     "salt": fields.Str(required=True),
     "amount": fields.Int(required=True),
     "destination": fields.Str(required=True),
-    "fee": fields.Int(missing=DEFAULT_FEE)
+    "fee": fields.Int(missing=config.default_fee)
 }
 
 history_args = {
@@ -228,7 +226,7 @@ def history(args, raw_address):
 @blueprint.route("/fee", methods=["GET"])
 def fee():
     return utils.response({
-        "fee": DEFAULT_FEE
+        "fee": config.default_fee
     })
 
 def init(app):

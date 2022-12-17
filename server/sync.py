@@ -344,8 +344,7 @@ def sync_blocks():
         latest_block = block
         orm.commit()
 
-@orm.db_session
-def sync_mempool():
+    # Check mempool
     current_height = General.current_height()
     latest_block = BlockService.latest_block()
 
@@ -358,3 +357,18 @@ def sync_mempool():
         if not TransactionService.get_by_txid(txid):
             process_transaction(txid)
             orm.commit()
+
+# @orm.db_session
+# def sync_mempool():
+#     current_height = General.current_height()
+#     latest_block = BlockService.latest_block()
+
+#     if latest_block.height + 5 < current_height:
+#         return
+
+#     mempool = General.mempool()["result"]
+
+#     for txid in mempool["tx"]:
+#         if not TransactionService.get_by_txid(txid):
+#             process_transaction(txid)
+#             orm.commit()
