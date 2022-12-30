@@ -112,7 +112,7 @@ def send(args):
     page = 1
 
     while True:
-        outputs_list = Output.select().order_by(
+        outputs_list = Output.select(lambda o: o.spent == False).order_by(
             orm.desc(Output.amount_raw)
         ).page(page, pagesize=100)
 
