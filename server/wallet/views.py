@@ -120,7 +120,7 @@ def send(args):
             break
 
         for output in outputs_list:
-            print(output)
+            print(output.txid, output.n, output.amount_raw)
             print(output.spent)
             unspent.append({
                 "value": output.amount_raw,
