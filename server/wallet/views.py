@@ -1,15 +1,15 @@
 from bitcoinutils.transactions import Transaction, TxInput, TxOutput
 from ..methods.transaction import Transaction as NodeTransaction
 from bitcoinutils.keys import PrivateKey, P2pkhAddress
+from ..methods.address import Address as NodeAddress
+from ..models import Index, Output, Address
 from webargs.flaskparser import use_args
 from ..sync import process_transaction
 from bitcoinutils.script import Script
-from ..methods.address import Address
 from ..services import AddressService
 from bitcoinutils.setup import setup
 from webargs import fields, validate
 from bitcoinutils import constants
-from ..models import Index, Output
 from base58check import b58encode
 from flask import Blueprint
 from pony import orm
@@ -60,7 +60,7 @@ def to_wif(secret, salt):
     return wif.decode("utf-8")
 
 def check_address(address):
-    data = Address.balance(address)
+    data = NodeAddress.balance(address)
 
     if data["error"]:
         return False
@@ -92,7 +92,7 @@ def send(args):
     addr_str = address.to_string()
 
     dest = args["destination"]
-    balance = Address.balance(addr_str)
+    balance = NodeAddress.balance(addr_str)
     amount = args["amount"]
     fee = args["fee"]
 
@@ -111,8 +111,13 @@ def send(args):
     send_total = 0
     page = 1
 
+    if not (db_addres := Address.get(address=addr_str)):
+        return utils.dead_response("No available UTXOs for transaction")
+
     while True:
-        outputs_list = Output.select(lambda o: o.spent == False).order_by(
+        outputs_list = Output.select(
+            lambda o: o.spent == False and o.address == db_addres
+        ).order_by(
             orm.desc(Output.amount_raw)
         ).page(page, pagesize=100)
 
