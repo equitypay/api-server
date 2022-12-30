@@ -108,7 +108,7 @@ def send(args):
     unspent = []
 
     funded = False
-    total = 0
+    send_total = 0
     page = 1
 
     while True:
@@ -126,9 +126,9 @@ def send(args):
                 "index": output.n
             })
 
-            total += output.amount_raw
+            send_total += output.amount_raw
 
-            if total >= amount:
+            if send_total >= amount:
                 funded = True
                 break
 
@@ -170,8 +170,12 @@ def send(args):
 
         txin[i].script_sig = Script([sig, pubkey])
 
+    serialized = tx.serialize()
+
+    print(serialized)
+
     broadcast = NodeTransaction.broadcast(
-        tx.serialize()
+        serialized
     )
 
     if not broadcast["error"]:
