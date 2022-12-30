@@ -48,7 +48,11 @@ def check_mempool_invalid(txid):
 
 def process_transaction(txid, block=None, index=None):
     tx_data = Transaction.info(txid, False)["result"]
-    created = datetime.fromtimestamp(tx_data["time"])
+
+    if "time" in tx_data:
+        created = datetime.fromtimestamp(tx_data["time"])
+    else:
+        created = datetime.utcnow()
 
     transaction_height = MEMPOOL_HEIGHT
     coinstake = False
@@ -333,6 +337,7 @@ def sync_blocks():
 
             # Confirm mempool transaction
             if transaction := TransactionService.get_by_txid(txid=txid):
+                transaction.created = block.created
                 transaction.height = block.height
                 transaction.block = block
                 continue
