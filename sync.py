@@ -1,5 +1,5 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
-from server.sync import sync_mempool
+# from server.sync import sync_mempool
 from server.sync import sync_blocks
 from server.sync import sync_peers
 

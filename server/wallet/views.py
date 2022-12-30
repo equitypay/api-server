@@ -2,15 +2,16 @@ from bitcoinutils.transactions import Transaction, TxInput, TxOutput
 from ..methods.transaction import Transaction as NodeTransaction
 from bitcoinutils.keys import PrivateKey, P2pkhAddress
 from webargs.flaskparser import use_args
+from ..sync import process_transaction
 from bitcoinutils.script import Script
 from ..methods.address import Address
 from ..services import AddressService
 from bitcoinutils.setup import setup
 from webargs import fields, validate
 from bitcoinutils import constants
+from ..models import Index, Output
 from base58check import b58encode
 from flask import Blueprint
-from ..models import Index
 from pony import orm
 from .. import utils
 import hashlib
@@ -81,6 +82,7 @@ def address(args):
 
 @blueprint.route("/send", methods=["POST"])
 @use_args(send_args, location="json")
+@orm.db_session
 def send(args):
     setup("mainnet")
 
@@ -100,22 +102,49 @@ def send(args):
     if balance["result"]["balance"] < amount + fee:
         return utils.dead_response("Not enough balance for transaction")
 
-    unspent = Address.unspent(addr_str, amount)
-
-    if unspent["error"]:
-        return unspent
-
-    if len(unspent["result"]) == 0:
-        return utils.dead_response("No available UTXOs for transaction")
-
     if not check_address(dest):
         return utils.dead_response("Invalid destination address")
+
+    unspent = []
+
+    funded = False
+    total = 0
+    page = 1
+
+    while True:
+        outputs_list = Output.select().order_by(
+            orm.desc(Output.amount_raw)
+        ).page(page, pagesize=100)
+
+        if len(outputs_list) == 0:
+            break
+
+        for output in outputs_list:
+            unspent.append({
+                "value": output.amount_raw,
+                "txid": output.txid,
+                "index": output.n
+            })
+
+            total += output.amount_raw
+
+            if total >= amount:
+                funded = True
+                break
+
+        if funded:
+            break
+
+        page += 1
+
+    if not funded:
+        return utils.dead_response("No available UTXOs for transaction")
 
     txout = []
     txin = []
     total = 0
 
-    for utxo in unspent["result"]:
+    for utxo in unspent:
         vin = TxInput(utxo["txid"], utxo["index"])
 
         txin.append(vin)
@@ -141,9 +170,14 @@ def send(args):
 
         txin[i].script_sig = Script([sig, pubkey])
 
-    return NodeTransaction.broadcast(
+    broadcast = NodeTransaction.broadcast(
         tx.serialize()
     )
+
+    if not broadcast["error"]:
+        process_transaction(broadcast["result"])
+
+    return broadcast
 
 @blueprint.route("/history/<string:raw_address>", methods=["GET"])
 @use_args(history_args, location="query")
