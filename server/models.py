@@ -188,6 +188,10 @@ class Transaction(db.Entity):
         }
 
     @property
+    def timestamp(self):
+        return int(self.created.timestamp())
+
+    @property
     def fee(self):
         output_amount = 0
         input_amount = 0

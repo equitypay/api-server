@@ -19,7 +19,7 @@
 							{% for transaction in transactions %}
 								<tr>
 									<td>
-										{{ transaction.block.height }}
+										{{ transaction.height }}
 									</td>
 									<td>
 										<a href="{{ url_for('explorer.transaction', txid=transaction.txid) }}" class="font-monospace">
@@ -27,7 +27,7 @@
 										</a>
 									</td>
 									<td>
-										<span class="local-time" time="{{ transaction.block.created|timestamp }}"></span>
+										<span class="local-time" time="{{ transaction.created|timestamp }}"></span>
 									</td>
 									<td>
 										<div class="reward-wrapper">

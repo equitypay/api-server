@@ -14,14 +14,12 @@
 										<td>Transaction Hash</td>
 										<td id="tx-info-hash" data-tx-info-hash="{{ transaction.txid }}" class="font-monospace">{{ transaction.txid }}</td>
 									</tr>
-									{% if transaction.block %}
-										<tr>
-											<td>Timestamp</td>
-											<td>
-												<span class="local-time" time="{{ transaction.block.created|timestamp }}"></span> (<b>{{ transaction.block.timestamp }}</b>)
-											</td>
-										</tr>
-									{% endif %}
+									<tr>
+										<td>Timestamp</td>
+										<td>
+											<span class="local-time" time="{{ transaction.created|timestamp }}"></span> (<b>{{ transaction.created|timestamp }}</b>)
+										</td>
+									</tr>
 									<tr>
 										<td>Height</td>
 										<td>
