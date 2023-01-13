@@ -122,7 +122,8 @@ def transactions(page):
         transactions.append({
             "height": transaction.block.height,
             "blockhash": transaction.block.blockhash,
-            "timestamp": transaction.block.created.timestamp(),
+            "timestamp": transaction.created.timestamp(),
+            "created": transaction.created,
             "block": transaction.block,
             "txid": transaction.txid,
             "amount": amount
