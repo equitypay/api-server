@@ -43,7 +43,7 @@ def transactions(args):
 
         result.append({
             "height": transaction.height,
-            "blockhash": transaction.block.blockhash,
+            "blockhash": transaction.block.blockhash if transaction.block else None,
             "timestamp": transaction.created.timestamp(),
             "txhash": transaction.txid,
             "amount": float(amount)

@@ -120,8 +120,8 @@ def transactions(page):
         amount = entry[1]
 
         transactions.append({
-            "height": transaction.block.height,
-            "blockhash": transaction.block.blockhash,
+            "height": transaction.height,
+            "blockhash": transaction.block.blockhash if transaction.block else None,
             "timestamp": transaction.created.timestamp(),
             "created": transaction.created,
             "block": transaction.block,
