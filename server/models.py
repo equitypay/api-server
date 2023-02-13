@@ -172,8 +172,13 @@ class Transaction(db.Entity):
 
             output_amount += vout.amount
 
+        confirmations = -1
+
+        if self.block:
+            confirmations = latest_blocks.height - self.block.height + 1
+
         return {
-            "confirmations": latest_blocks.height - self.block.height + 1,
+            "confirmations": confirmations,
             "fee": float(input_amount - output_amount),
             "timestamp": int(self.created.timestamp()),
             "amount": float(self.amount),
