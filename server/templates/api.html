@@ -131,13 +131,13 @@
 				{
 					'name': '/info',
 					'example': '/info',
-					'description': 'This method return current info about EquityPay network.',
+					'description': 'This method returns current info about the EquityPay network.',
 					'method': 'GET',
 					'id': 'info'
 				}, {
 					'name': '/height/int:height',
 					'example': '/height/1',
-					'description': 'This method return block info by given height.',
+					'description': 'This method returns block info by the given height.',
 					'base': '/height/',
 					'method': 'GET',
 					'id': 'height',
@@ -156,7 +156,7 @@
 				}, {
 					'name': '/block/string:hash',
 					'example': '/block/e7b6343dc784aa895b751646852ad0599deda40881702b8d90f01815caf7488b',
-					'description': 'This method return block info by given hash.',
+					'description': 'This method returns block info for the given hash.',
 					'base': '/block/',
 					'method': 'GET',
 					'id': 'block',
@@ -168,14 +168,14 @@
 							'key': true
 						}, {
 							'title': 'offset',
-							'description': 'Offset of transactions list',
+							'description': 'Offset of the transactions list',
 							'default': 0
 						}
 					]
 				}, {
 					'name': '/header/string:hash',
 					'example': '/header/e7b6343dc784aa895b751646852ad0599deda40881702b8d90f01815caf7488b',
-					'description': 'This method return block header by given hash.',
+					'description': 'This method returns block header for the given hash.',
 					'base': '/header/',
 					'method': 'GET',
 					'id': 'header',
@@ -190,14 +190,14 @@
 				}, {
 					'name': '/range/int:height',
 					'example': '/range/100?offset=3',
-					'description': 'This method return range of blocks staring from certain height.',
+					'description': 'This method returns a range of blocks staring from a certain height.',
 					'base': '/range/',
 					'method': 'GET',
 					'id': 'range',
 					'params': [
 						{
 							'title': 'height',
-							'description': 'Height of range start',
+							'description': 'Height of the range start',
 							'example': 1,
 							'key': true
 						}, {
@@ -210,7 +210,7 @@
 				}, {
 					'name': '/balance/string:address',
 					'example': '/balance/EacecnzMNh9zUkASdMthgmgYgNVBoPHQKa',
-					'description': 'This method return address balance.',
+					'description': 'This method returns the balance of a given address.',
 					'base': '/balance/',
 					'method': 'GET',
 					'id': 'balance',
@@ -225,7 +225,7 @@
 				}, {
 					'name': '/mempool/string:address',
 					'example': '/mempool/EacecnzMNh9zUkASdMthgmgYgNVBoPHQKa',
-					'description': 'This method return address mempool transactions.',
+					'description': 'This method returns mempool transactions of a given address.',
 					'base': '/mempool/',
 					'method': 'GET',
 					'id': 'mempool',
@@ -240,7 +240,7 @@
 				}, {
 					'name': '/unspent/string:address',
 					'example': '/unspent/EacecnzMNh9zUkASdMthgmgYgNVBoPHQKa?amount=1',
-					'description': 'This method return address unspent outputs.',
+					'description': 'This method returns unspent outputs of a given address.',
 					'base': '/unspent/',
 					'method': 'GET',
 					'id': 'unspent',
@@ -260,7 +260,7 @@
 				}, {
 					'name': '/history/string:address',
 					'example': '/history/EacecnzMNh9zUkASdMthgmgYgNVBoPHQKa',
-					'description': 'This method return list of address transaction hashes.',
+					'description': 'This method returns a list of transaction hashes for a given address.',
 					'base': '/history/',
 					'method': 'GET',
 					'id': 'history',
@@ -278,9 +278,29 @@
 						}
 					]
 				}, {
+					'name': '/wallet/history/string:address',
+					'example': '/wallet/history/EQMdG8msHuqmK3KvKxNGeFjHRuEgZ5TPaW',
+					'description': 'This method returns an extended list of address transactions with transaction amount, category, timestamp and hash.',
+					'base': '/wallet/',
+					'method': 'GET',
+					'id': 'wallet',
+					'params': [
+						{
+							'title': 'page',
+							'description': 'Page of transaction list',
+							'example': 1,
+                            'default': 1
+						}, {
+							'title': 'size',
+							'description': 'Page size',
+							'example': 20,
+							'default': 10
+						}
+					]
+				}, {
 					'name': '/transaction/string:hash',
 					'example': '/transaction/f7d0f0f5d393dd279e87d1c4d6f4df19833b259ca18e94322a631ef0f39482d3',
-					'description': 'This method return info about transaction.',
+					'description': 'This method returns info about the transaction.',
 					'base': '/transaction/',
 					'method': 'GET',
 					'id': 'transaction',
@@ -295,25 +315,25 @@
 				}, {
 					'name': '/mempool',
 					'example': '/mempool',
-					'description': 'This method return info about mempool.',
+					'description': 'This method returns info about mempool.',
 					'method': 'GET',
 					'id': 'mempool-info'
 				}, {
 					'name': '/supply',
 					'example': '/supply',
-					'description': 'This method return info about current coins supply.',
+					'description': 'This method returns info about the current coins supply.',
 					'method': 'GET',
 					'id': 'supply'
 				}, {
 					'name': '/fee',
 					'example': '/fee',
-					'description': 'This method return recomended transaction fee.',
+					'description': 'This method returns the recomended transaction fee.',
 					'method': 'GET',
 					'id': 'fee'
 				}, {
 					'name': '/decode/string:raw',
 					'example': '/decode/010000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff200308b11f04422fff5d083ffffd7a000000000d2f6e6f64655374726174756d2f00000000020000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf900000000010000001976a914fcdf384938cdffa630ea4b2638dfca818ca54a1a88ac0120000000000000000000000000000000000000000000000000000000000000000000000000',
-					'description': 'This method return decoded info about transaction.',
+					'description': 'This method returns decoded info about the transaction.',
 					'base': '/decode/',
 					'method': 'GET',
 					'id': 'decode',
@@ -328,7 +348,7 @@
 				}, {
 					'name': '/broadcast',
 					'example': '/broadcast',
-					'description': 'This method broadcast raw signed transaction to EquityPay network.',
+					'description': 'This method broadcasts a raw signed transaction to the EquityPay network.',
 					'method': 'POST',
 					'id': 'broadcast',
 					'response': {
