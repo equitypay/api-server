@@ -283,19 +283,55 @@
 					'description': 'This method returns an extended list of address transactions with transaction amount, category, timestamp and hash.',
 					'base': '/wallet/',
 					'method': 'GET',
-					'id': 'wallet',
+					'id': 'history',
 					'params': [
 						{
 							'title': 'page',
 							'description': 'Page of transaction list',
 							'example': 1,
-                            'default': 1
+							'default': 1
 						}, {
 							'title': 'size',
 							'description': 'Page size',
 							'example': 20,
 							'default': 10
 						}
+					]
+				}, {
+					'name': '/wallet/send',
+					'example': '/wallet/send',
+					'description': 'This method creates and signs a transaction using a private key generated from secret and salt.',
+					'base': '/wallet/',
+					'method': 'POST',
+					'id': 'send',
+                    'response': {
+						'result': 'f7d0f0f5d393dd279e87d1c4d6f4df19833b259ca18e94322a631ef0f39482d3',
+						'error': null,
+						'id': 'api-server'
+					},
+					'params': [
+						{
+							'title': 'secret',
+							'description': 'Secret',
+						}, {
+							'title': 'salt',
+							'description': 'Salt',
+						},
+                        {
+                            'title': 'amount',
+                            'description': 'Transaction amount',
+                            'example': 10000000
+                        },
+                        {
+                            'title': 'destination',
+                            'description': 'Destination address',
+                            'example': 'EQMdG8msHuqmK3KvKxNGeFjHRuEgZ5TPaW'
+                        },
+                        {
+                            'title': 'fee',
+                            'description': 'Transaction fee',
+                            'example': 500000
+                        }
 					]
 				}, {
 					'name': '/transaction/string:hash',
