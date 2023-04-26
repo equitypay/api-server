@@ -31,22 +31,22 @@ def log_message(message):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"{now} {message}")
 
-def check_mempool_invalid(txid):
-    tx_data = Transaction.info(txid, False)["result"]
+# def check_mempool_invalid(txid):
+#     tx_data = Transaction.info(txid, False)["result"]
 
-    for vin in tx_data["vin"]:
-        if "coinbase" in vin:
-            continue
+#     for vin in tx_data["vin"]:
+#         if "coinbase" in vin:
+#             continue
         
-        prev_tx = TransactionService.get_by_txid(vin["txid"])
-        output = OutputService.get_by_prev(prev_tx, vin["vout"])
+#         prev_tx = TransactionService.get_by_txid(vin["txid"])
+#         output = OutputService.get_by_prev(prev_tx, vin["vout"])
 
-        if output.spent:
-            conflic_txid = output.vin.transaction.txid
-            log_message(f"Deleting conflicting transaction {conflic_txid}")
-            output.vin.transaction.delete()
+#         if output.spent:
+#             conflic_txid = output.vin.transaction.txid
+#             log_message(f"Deleting conflicting transaction {conflic_txid}")
+#             output.vin.transaction.delete()
 
-def process_transaction(txid, block=None, index=None):
+def process_transaction(txid, block, index=None):
     tx_data = Transaction.info(txid, False)["result"]
 
     if "time" in tx_data:
@@ -54,14 +54,12 @@ def process_transaction(txid, block=None, index=None):
     else:
         created = datetime.utcnow()
 
-    transaction_height = MEMPOOL_HEIGHT
     coinstake = False
     coinbase = False
 
-    if block:
-        coinbase = block.stake is False and index == 0
-        coinstake = block.stake and index == 1
-        transaction_height = block.height
+    coinbase = block.stake is False and index == 0
+    coinstake = block.stake and index == 1
+    transaction_height = block.height
 
     transaction = TransactionService.create(
         utils.amount(tx_data["amount"]), tx_data["txid"],
@@ -336,13 +334,13 @@ def sync_blocks():
                 continue
 
             # Confirm mempool transaction
-            if transaction := TransactionService.get_by_txid(txid=txid):
-                transaction.created = block.created
-                transaction.height = block.height
-                transaction.block = block
-                continue
+            # if transaction := TransactionService.get_by_txid(txid=txid):
+            #     transaction.created = block.created
+            #     transaction.height = block.height
+            #     transaction.block = block
+            #     continue
 
-            check_mempool_invalid(txid)
+            # check_mempool_invalid(txid)
 
             process_transaction(txid, block, index)
 
@@ -350,18 +348,18 @@ def sync_blocks():
         orm.commit()
 
     # Check mempool
-    current_height = General.current_height()
-    latest_block = BlockService.latest_block()
+    # current_height = General.current_height()
+    # latest_block = BlockService.latest_block()
 
-    if latest_block.height + 5 < current_height:
-        return
+    # if latest_block.height + 5 < current_height:
+    #     return
 
-    mempool = General.mempool()["result"]
+    # mempool = General.mempool()["result"]
 
-    for txid in mempool["tx"]:
-        if not TransactionService.get_by_txid(txid):
-            process_transaction(txid)
-            orm.commit()
+    # for txid in mempool["tx"]:
+    #     if not TransactionService.get_by_txid(txid):
+    #         process_transaction(txid)
+    #         orm.commit()
 
 # @orm.db_session
 # def sync_mempool():
