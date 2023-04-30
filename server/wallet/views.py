@@ -37,6 +37,21 @@ send_args = {
     "fee": fields.Int(missing=config.default_fee)
 }
 
+recipient_args = {
+    "address": fields.Str(required=True),
+    "amount": fields.Int(required=True)
+}
+
+sendmany_args = {
+    "secret": fields.Str(required=True),
+    "salt": fields.Str(required=True),
+    "amount": fields.Int(required=True),
+    "recipients": fields.List(
+        fields.Nested(recipient_args)
+    ),
+    "fee": fields.Int(missing=config.default_fee)
+}
+
 history_args = {
     "size": fields.Int(missing=10, validate=validate.Range(min=1, max=100)),
     "page": fields.Int(missing=1, validate=validate.Range(min=1))
@@ -190,6 +205,124 @@ def send(args):
 
     return broadcast
 
+@blueprint.route("/sendmany", methods=["POST"])
+@use_args(sendmany_args, location="json")
+@orm.db_session
+def sendmany(args):
+    setup("mainnet")
+
+    priv = PrivateKey(wif=to_wif(args["secret"], args["salt"]))
+    pub = priv.get_public_key()
+    address = pub.get_address()
+    addr_str = address.to_string()
+
+    balance = NodeAddress.balance(addr_str)
+    amount = sum(recipient["amount"] for recipient in args["recipients"])
+    fee = args["fee"]
+
+    if balance["error"]:
+        return balance
+
+    if balance["result"]["balance"] < amount + fee:
+        return utils.dead_response("Not enough balance for transaction")
+
+    for recipient in args["recipients"]:
+        recipient_addr = recipient["address"]
+
+        if not check_address(recipient_addr):
+            return utils.dead_response(
+                f"Invalid destination address {recipient_addr}"
+            )
+
+    unspent = []
+
+    funded = False
+    send_total = 0
+    page = 1
+
+    if not (db_addres := Address.get(address=addr_str)):
+        return utils.dead_response("No available UTXOs for transaction")
+
+    while True:
+        outputs_list = Output.select(
+            lambda o: o.spent == False and o.address == db_addres
+        ).order_by(
+            orm.desc(Output.amount_raw)
+        ).page(page, pagesize=100)
+
+        if len(outputs_list) == 0:
+            break
+
+        for output in outputs_list:
+            print(output.txid, output.n, output.amount_raw)
+            print(output.spent)
+            unspent.append({
+                "value": output.amount_raw,
+                "txid": output.txid,
+                "index": output.n
+            })
+
+            send_total += output.amount_raw
+
+            if send_total >= amount:
+                funded = True
+                break
+
+        if funded:
+            break
+
+        page += 1
+
+    if not funded:
+        return utils.dead_response("No available UTXOs for transaction")
+
+    txout = []
+    txin = []
+    total = 0
+
+    for utxo in unspent:
+        vin = TxInput(utxo["txid"], utxo["index"])
+
+        txin.append(vin)
+        total += utxo["value"]
+
+    change = total - amount - fee
+
+    for recipient in args["recipients"]:
+        target = P2pkhAddress(recipient["address"])
+
+        txout.append(
+            TxOutput((recipient["amount"]), target.to_script_pub_key())
+        )
+
+    txout.append(TxOutput((change), address.to_script_pub_key()))
+
+    tx = Transaction(txin, txout)
+    pubkey = pub.to_hex()
+
+    for i in range(0, len(txin)):
+        sig = priv.sign_input(tx, i, Script(
+            [
+                "OP_DUP", "OP_HASH160", address.to_hash160(),
+                "OP_EQUALVERIFY", "OP_CHECKSIG"
+            ])
+        )
+
+        txin[i].script_sig = Script([sig, pubkey])
+
+    serialized = tx.serialize()
+
+    print(serialized)
+
+    broadcast = NodeTransaction.broadcast(
+        serialized
+    )
+
+    if not broadcast["error"]:
+        process_transaction(broadcast["result"])
+
+    return broadcast
+
 @blueprint.route("/history/<string:raw_address>", methods=["GET"])
 @use_args(history_args, location="query")
 @orm.db_session
@@ -226,7 +359,7 @@ def history(args, raw_address):
                     outputs[vout["address"]] = 0
 
                 outputs[vout["address"]] += vout["amount"]
-            
+
             if tx_data["coinbase"] or tx_data["coinstake"]:
                 result["category"] = "reward"
 
@@ -238,7 +371,7 @@ def history(args, raw_address):
                     amount = outputs[raw_address]
 
                 result["amount"] = round(amount, 8)
-                
+
             else:
                 sent = {}
                 received = {}
