@@ -334,6 +334,49 @@
                         }
 					]
 				}, {
+					'name': '/wallet/sendmany',
+					'example': '/wallet/sendmany',
+					'description': 'This method creates and signs a transaction with multiple outputs using a private key generated from secret and salt.',
+					'base': '/wallet/',
+					'method': 'POST',
+					'id': 'sendmany',
+                    'response': {
+						'result': 'f7d0f0f5d393dd279e87d1c4d6f4df19833b259ca18e94322a631ef0f39482d3',
+						'error': null,
+						'id': 'api-server'
+					},
+					'params': [
+						{
+							'title': 'secret',
+							'description': 'Secret',
+						}, {
+							'title': 'salt',
+							'description': 'Salt',
+						},
+                        {
+                            'title': 'amount',
+                            'description': 'Transaction amount',
+                            'example': 10000000
+                        },
+                        {
+                            'title': 'recipients',
+                            'description': 'A list of transaction recipients and amounts',
+                            'example': [{
+                                "address": "EPTuVDjhhL9SqJGXExwybrdXZWt176mkG1",
+                                "amount": 10000000
+                            },
+                            {
+                                "address": "EPTuVDjhhL9SqJGXExwybrdXZWt176mkG1",
+                                "amount": 2000000
+                            }]
+                        },
+                        {
+                            'title': 'fee',
+                            'description': 'Transaction fee',
+                            'example': 500000
+                        }
+					]
+				}, {
 					'name': '/transaction/string:hash',
 					'example': '/transaction/f7d0f0f5d393dd279e87d1c4d6f4df19833b259ca18e94322a631ef0f39482d3',
 					'description': 'This method returns info about the transaction.',
