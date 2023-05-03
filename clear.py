@@ -4,7 +4,9 @@ from pony import orm
 
 @orm.db_session
 def clear_mempool():
-    transactions = Transaction.select(lambda t: t.height == -1).order_by(orm.desc(Transaction.created))
+    transactions = Transaction.select(
+        lambda t: t.block == None
+    ).order_by(orm.desc(Transaction.created))
 
     for transaction in transactions:
         for output in transaction.outputs:
@@ -17,8 +19,6 @@ def clear_mempool():
 
         print(f"Deleting mempool transaction {transaction.txid}")
         transaction.delete()
-
-        break
 
 if __name__ == "__main__":
     clear_mempool()

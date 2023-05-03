@@ -310,6 +310,9 @@ def sync_blocks():
         reorg_block = latest_block
         latest_block = reorg_block.previous_block
 
+        for transaction in block.transactions:
+            transaction.delete()
+
         reorg_block.delete()
         orm.commit()
 
