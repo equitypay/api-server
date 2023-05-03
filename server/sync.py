@@ -20,16 +20,23 @@ import json
 
 MEMPOOL_HEIGHT = -1
 
-TRANSFER_TOPIC = "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+TRANSFER_TOPIC = (
+    "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+)
+
 
 def log_block(message, block, tx=[]):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     time = block.created.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{now} {message}: hash={block.blockhash} height={block.height} tx={len(tx)} date='{time}'")
+    print(
+        f"{now} {message}: hash={block.blockhash} height={block.height} tx={len(tx)} date='{time}'"
+    )
+
 
 def log_message(message):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"{now} {message}")
+
 
 # def check_mempool_invalid(txid):
 #     tx_data = Transaction.info(txid, False)["result"]
@@ -37,7 +44,7 @@ def log_message(message):
 #     for vin in tx_data["vin"]:
 #         if "coinbase" in vin:
 #             continue
-        
+
 #         prev_tx = TransactionService.get_by_txid(vin["txid"])
 #         output = OutputService.get_by_prev(prev_tx, vin["vout"])
 
@@ -45,6 +52,7 @@ def log_message(message):
 #             conflic_txid = output.vin.transaction.txid
 #             log_message(f"Deleting conflicting transaction {conflic_txid}")
 #             output.vin.transaction.delete()
+
 
 def process_transaction(txid, block, index=None):
     tx_data = Transaction.info(txid, False)["result"]
@@ -62,9 +70,15 @@ def process_transaction(txid, block, index=None):
     transaction_height = block.height
 
     transaction = TransactionService.create(
-        utils.amount(tx_data["amount"]), tx_data["txid"],
-        created, tx_data["locktime"], tx_data["size"], transaction_height,
-        block, coinbase, coinstake
+        utils.amount(tx_data["amount"]),
+        tx_data["txid"],
+        created,
+        tx_data["locktime"],
+        tx_data["size"],
+        transaction_height,
+        block,
+        coinbase,
+        coinstake,
     )
 
     for vin in tx_data["vin"]:
@@ -80,9 +94,7 @@ def process_transaction(txid, block, index=None):
 
         IndexService.create(prev_out.address, transaction)
 
-        InputService.create(
-            vin["sequence"], vin["vout"], transaction, prev_out
-        )
+        InputService.create(vin["sequence"], vin["vout"], transaction, prev_out)
 
     for vout in tx_data["vout"]:
         if vout["scriptPubKey"]["type"] in ["nonstandard", "nulldata"]:
@@ -106,9 +118,14 @@ def process_transaction(txid, block, index=None):
         IndexService.create(address, transaction)
 
         output = OutputService.create(
-            transaction, amount, amount_raw, vout["scriptPubKey"]["type"],
-            address, vout["scriptPubKey"]["hex"],
-            txid, vout["n"]
+            transaction,
+            amount,
+            amount_raw,
+            vout["scriptPubKey"]["type"],
+            address,
+            vout["scriptPubKey"]["hex"],
+            txid,
+            vout["n"],
         )
 
         if not (balance := BalanceService.get(address)):
@@ -135,22 +152,22 @@ def process_transaction(txid, block, index=None):
 
             info = data["result"]
 
-            token = Token(**{
-                "created": transaction.created,
-                "supply": float(info["supply"]),
-                "decimals": info["decimals"],
-                "address": contract_address,
-                "transaction": transaction,
-                "ticker": info["symbol"],
-                "name": info["name"],
-                "issuer": issuer
-            })
+            token = Token(
+                **{
+                    "created": transaction.created,
+                    "supply": float(info["supply"]),
+                    "decimals": info["decimals"],
+                    "address": contract_address,
+                    "transaction": transaction,
+                    "ticker": info["symbol"],
+                    "name": info["name"],
+                    "issuer": issuer,
+                }
+            )
 
-            TokenBalance(**{
-                "amount": token.supply,
-                "address": issuer,
-                "token": token
-            })
+            TokenBalance(
+                **{"amount": token.supply, "address": issuer, "token": token}
+            )
 
         for log in receipt["log"]:
             if not (token := Token.get(address=log["address"])):
@@ -173,23 +190,31 @@ def process_transaction(txid, block, index=None):
             if not (receiver := AddressService.get_by_address(address_to)):
                 receiver = AddressService.create(address_to)
 
-            if not (sender_balance := TokenBalance.get(address=sender, token=token)):
+            if not (
+                sender_balance := TokenBalance.get(address=sender, token=token)
+            ):
                 sender_balance = TokenBalance(address=sender, token=token)
 
-            if not (receiver_balance := TokenBalance.get(address=receiver, token=token)):
+            if not (
+                receiver_balance := TokenBalance.get(
+                    address=receiver, token=token
+                )
+            ):
                 receiver_balance = TokenBalance(address=receiver, token=token)
 
             IndexService.create(sender, transaction)
             IndexService.create(receiver, transaction)
 
-            transfer = Transfer(**{
-                "created": transaction.created,
-                "transaction": transaction,
-                "receiver": receiver,
-                "sender": sender,
-                "amount": amount,
-                "token": token
-            })
+            transfer = Transfer(
+                **{
+                    "created": transaction.created,
+                    "transaction": transaction,
+                    "receiver": receiver,
+                    "sender": sender,
+                    "amount": amount,
+                    "token": token,
+                }
+            )
 
             receiver_balance.amount += transfer.amount
             sender_balance.amount -= transfer.amount
@@ -208,6 +233,7 @@ def process_transaction(txid, block, index=None):
 
     volume_interval.value += int(transaction.amount)
 
+
 @orm.db_session
 def rollback_blocks(height):
     latest_block = BlockService.latest_block()
@@ -222,6 +248,7 @@ def rollback_blocks(height):
         orm.commit()
 
     log_message("Finised rollback")
+
 
 @orm.db_session
 def sync_peers():
@@ -240,9 +267,11 @@ def sync_peers():
 
             batch.append({"query": address[0]})
 
-        r = requests.post("http://ip-api.com/batch?fields=lat,lon,country,countryCode,city", headers={
-            "content-type": "text/plain;"
-        }, data=json.dumps(batch))
+        r = requests.post(
+            "http://ip-api.com/batch?fields=lat,lon,country,countryCode,city",
+            headers={"content-type": "text/plain;"},
+            data=json.dumps(batch),
+        )
         geo_data = r.json()
 
         index = 0
@@ -255,17 +284,19 @@ def sync_peers():
             peer = Peer.get(address=address[0])
 
             if not peer:
-                Peer(**{
-                    "address": address[0],
-                    "port": address[1],
-                    "subver": peer_data["subver"],
-                    "height": peer_data["synced_blocks"],
-                    "country": geo_data[index]["country"],
-                    "code": geo_data[index]["countryCode"],
-                    "city": geo_data[index]["city"],
-                    "lat": geo_data[index]["lat"],
-                    "lon": geo_data[index]["lon"]
-                })
+                Peer(
+                    **{
+                        "address": address[0],
+                        "port": address[1],
+                        "subver": peer_data["subver"],
+                        "height": peer_data["synced_blocks"],
+                        "country": geo_data[index]["country"],
+                        "code": geo_data[index]["countryCode"],
+                        "city": geo_data[index]["city"],
+                        "lat": geo_data[index]["lat"],
+                        "lon": geo_data[index]["lon"],
+                    }
+                )
 
             else:
                 peer.address = address[0]
@@ -281,6 +312,7 @@ def sync_peers():
 
             index += 1
 
+
 @orm.db_session
 def sync_blocks():
     if not BlockService.latest_block():
@@ -289,10 +321,20 @@ def sync_blocks():
         signature = data["signature"] if "signature" in data else None
 
         block = BlockService.create(
-            utils.amount(data["reward"]), data["hash"], data["height"], created,
-            data["difficulty"], data["merkleroot"], data["chainwork"],
-            data["version"], data["weight"], data["stake"], data["nonce"],
-            data["size"], data["bits"], signature
+            utils.amount(data["reward"]),
+            data["hash"],
+            data["height"],
+            created,
+            data["difficulty"],
+            data["merkleroot"],
+            data["chainwork"],
+            data["version"],
+            data["weight"],
+            data["stake"],
+            data["nonce"],
+            data["size"],
+            data["bits"],
+            signature,
         )
 
         log_block("Genesis block", block)
@@ -302,7 +344,9 @@ def sync_blocks():
     current_height = General.current_height()
     latest_block = BlockService.latest_block()
 
-    log_message(f"Current node height: {current_height}, db height: {latest_block.height}")
+    log_message(
+        f"Current node height: {current_height}, db height: {latest_block.height}"
+    )
 
     while latest_block.blockhash != Block.blockhash(latest_block.height):
         log_block("Found reorg", latest_block)
@@ -310,7 +354,7 @@ def sync_blocks():
         reorg_block = latest_block
         latest_block = reorg_block.previous_block
 
-        for transaction in block.transactions:
+        for transaction in reorg_block.transactions:
             transaction.delete()
 
         reorg_block.delete()
@@ -319,13 +363,25 @@ def sync_blocks():
     for height in range(latest_block.height + 1, current_height + 1):
         block_data = Block.height(height)["result"]
         created = datetime.fromtimestamp(block_data["time"])
-        signature = block_data["signature"] if "signature" in block_data else None
+        signature = (
+            block_data["signature"] if "signature" in block_data else None
+        )
 
         block = BlockService.create(
-            utils.amount(block_data["reward"]), block_data["hash"], block_data["height"], created,
-            block_data["difficulty"], block_data["merkleroot"], block_data["chainwork"],
-            block_data["version"], block_data["weight"], block_data["stake"], block_data["nonce"],
-            block_data["size"], block_data["bits"], signature
+            utils.amount(block_data["reward"]),
+            block_data["hash"],
+            block_data["height"],
+            created,
+            block_data["difficulty"],
+            block_data["merkleroot"],
+            block_data["chainwork"],
+            block_data["version"],
+            block_data["weight"],
+            block_data["stake"],
+            block_data["nonce"],
+            block_data["size"],
+            block_data["bits"],
+            signature,
         )
 
         block.previous_block = latest_block
@@ -363,6 +419,7 @@ def sync_blocks():
     #     if not TransactionService.get_by_txid(txid):
     #         process_transaction(txid)
     #         orm.commit()
+
 
 # @orm.db_session
 # def sync_mempool():
