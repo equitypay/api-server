@@ -1,6 +1,7 @@
 from bitcoinutils.transactions import Transaction, TxInput, TxOutput
 from ..methods.transaction import Transaction as NodeTransaction
 from bitcoinutils.keys import PrivateKey, P2pkhAddress
+from webargs import fields, validate, ValidationError
 from ..methods.address import Address as NodeAddress
 from ..models import Index, Output, Address
 from webargs.flaskparser import use_args
@@ -8,7 +9,6 @@ from ..sync import process_transaction
 from bitcoinutils.script import Script
 from ..services import AddressService
 from bitcoinutils.setup import setup
-from webargs import fields, validate
 from bitcoinutils import constants
 from base58check import b58encode
 from flask import Blueprint
@@ -24,6 +24,10 @@ constants.NETWORK_WIF_PREFIXES["mainnet"] = b"\x46"
 
 blueprint = Blueprint("wallet", __name__, url_prefix="/wallet")
 
+def greater_than_zero(value):
+    if value <= 0:
+        raise ValidationError("Value must be greater than 0.")
+
 secret_args = {
     "secret": fields.Str(required=True),
     "salt": fields.Str(required=True)
@@ -32,24 +36,23 @@ secret_args = {
 send_args = {
     "secret": fields.Str(required=True),
     "salt": fields.Str(required=True),
-    "amount": fields.Int(required=True),
+    "amount": fields.Int(required=True, validate=greater_than_zero),
     "destination": fields.Str(required=True),
-    "fee": fields.Int(missing=config.default_fee)
+    "fee": fields.Int(missing=config.default_fee, validate=greater_than_zero)
 }
 
 recipient_args = {
     "address": fields.Str(required=True),
-    "amount": fields.Int(required=True)
+    "amount": fields.Int(required=True, validate=greater_than_zero)
 }
 
 sendmany_args = {
     "secret": fields.Str(required=True),
     "salt": fields.Str(required=True),
-    "amount": fields.Int(required=True),
     "recipients": fields.List(
         fields.Nested(recipient_args)
     ),
-    "fee": fields.Int(missing=config.default_fee)
+    "fee": fields.Int(missing=config.default_fee, validate=greater_than_zero)
 }
 
 history_args = {
