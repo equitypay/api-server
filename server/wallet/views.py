@@ -28,6 +28,10 @@ def greater_than_zero(value):
     if value <= 0:
         raise ValidationError("Value must be greater than 0.")
 
+def at_least_one(value):
+    if len(value) < 1:
+        raise ValidationError("At least one recipient is required.")
+
 secret_args = {
     "secret": fields.Str(required=True),
     "salt": fields.Str(required=True)
@@ -50,7 +54,8 @@ sendmany_args = {
     "secret": fields.Str(required=True),
     "salt": fields.Str(required=True),
     "recipients": fields.List(
-        fields.Nested(recipient_args)
+        fields.Nested(recipient_args),
+        required=True, validate=at_least_one
     ),
     "fee": fields.Int(missing=config.default_fee, validate=greater_than_zero)
 }
