@@ -5,7 +5,6 @@ from webargs import fields, validate, ValidationError
 from ..methods.address import Address as NodeAddress
 from ..models import Index, Output, Address
 from webargs.flaskparser import use_args
-from ..sync import process_transaction
 from bitcoinutils.script import Script
 from ..services import AddressService
 from bitcoinutils.setup import setup
@@ -208,9 +207,6 @@ def send(args):
         serialized
     )
 
-    if not broadcast["error"]:
-        process_transaction(broadcast["result"])
-
     return broadcast
 
 @blueprint.route("/sendmany", methods=["POST"])
@@ -325,9 +321,6 @@ def sendmany(args):
     broadcast = NodeTransaction.broadcast(
         serialized
     )
-
-    if not broadcast["error"]:
-        process_transaction(broadcast["result"])
 
     return broadcast
 
