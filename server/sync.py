@@ -258,6 +258,7 @@ def sync_peers():
 
     if not data["error"]:
         batch = []
+        cache = []
 
         for peer_data in data["result"]:
             address = peer_data["addr"].split(":")
@@ -265,7 +266,17 @@ def sync_peers():
             if len(address) != 2:
                 continue
 
-            batch.append({"query": address[0]})
+            if peer := Peer.get(address=address[0]):
+                peer.subver = peer_data["subver"]
+                peer.height = peer_data["synced_blocks"]
+                peer.last = datetime.utcnow()
+
+            else:
+                batch.append({"query": address[0]})
+                cache.append(peer_data)
+
+        batch = batch[:100]
+        cache = cache[:100]
 
         r = requests.post(
             "http://ip-api.com/batch?fields=lat,lon,country,countryCode,city",
@@ -274,43 +285,25 @@ def sync_peers():
         )
         geo_data = r.json()
 
-        index = 0
-        for peer_data in data["result"]:
+        for index, peer_data in enumerate(cache):
             address = peer_data["addr"].split(":")
 
             if len(address) != 2:
                 continue
 
-            peer = Peer.get(address=address[0])
-
-            if not peer:
-                Peer(
-                    **{
-                        "address": address[0],
-                        "port": address[1],
-                        "subver": peer_data["subver"],
-                        "height": peer_data["synced_blocks"],
-                        "country": geo_data[index]["country"],
-                        "code": geo_data[index]["countryCode"],
-                        "city": geo_data[index]["city"],
-                        "lat": geo_data[index]["lat"],
-                        "lon": geo_data[index]["lon"],
-                    }
-                )
-
-            else:
-                peer.address = address[0]
-                peer.port = address[1]
-                peer.subver = peer_data["subver"]
-                peer.height = peer_data["synced_blocks"]
-                peer.country = geo_data[index]["country"]
-                peer.code = geo_data[index]["countryCode"]
-                peer.city = geo_data[index]["city"]
-                peer.lat = geo_data[index]["lat"]
-                peer.lon = geo_data[index]["lon"]
-                peer.last = datetime.utcnow()
-
-            index += 1
+            Peer(
+                **{
+                    "address": address[0],
+                    "port": address[1],
+                    "subver": peer_data["subver"],
+                    "height": peer_data["synced_blocks"],
+                    "country": geo_data[index]["country"],
+                    "code": geo_data[index]["countryCode"],
+                    "city": geo_data[index]["city"],
+                    "lat": geo_data[index]["lat"],
+                    "lon": geo_data[index]["lon"],
+                }
+            )
 
 
 @orm.db_session
