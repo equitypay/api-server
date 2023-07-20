@@ -266,10 +266,7 @@ def sync_peers():
             if len(address) != 2:
                 continue
 
-            # if peer := Peer.get(address=address[0], port=address[1]):
-            if peer := Peer.select(
-                lambda p: p.address == address[0] and p.port == address[1]
-            ).first():
+            if peer := Peer.select(lambda p: p.address == address[0]).first():
                 peer.subver = peer_data["subver"]
                 peer.height = peer_data["synced_blocks"]
                 peer.last = datetime.utcnow()
@@ -296,8 +293,8 @@ def sync_peers():
 
             Peer(
                 **{
+                    "port": 9998,
                     "address": address[0],
-                    "port": address[1],
                     "subver": peer_data["subver"],
                     "height": peer_data["synced_blocks"],
                     "country": geo_data[index]["country"],
