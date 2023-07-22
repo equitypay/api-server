@@ -16,19 +16,23 @@ from pony import orm
 
 db = Blueprint("db", __name__, url_prefix="/v2/")
 
+
 @db.route("/latest", methods=["GET"])
 @orm.db_session
 def info():
     block = BlockService.latest_block()
 
-    return utils.response({
-        "time": block.created.timestamp(),
-        "blockhash": block.blockhash,
-        "height": block.height,
-        "chainwork": block.chainwork,
-        "difficulty": block.difficulty,
-        "reward": float(block.reward)
-    })
+    return utils.response(
+        {
+            "time": block.created.timestamp(),
+            "blockhash": block.blockhash,
+            "height": block.height,
+            "chainwork": block.chainwork,
+            "difficulty": block.difficulty,
+            "reward": float(block.reward),
+        }
+    )
+
 
 @db.route("/transactions", methods=["GET"])
 @use_args(page_args, location="query")
@@ -41,15 +45,20 @@ def transactions(args):
         transaction = entry[0]
         amount = entry[1]
 
-        result.append({
-            "height": transaction.height,
-            "blockhash": transaction.block.blockhash if transaction.block else None,
-            "timestamp": transaction.created.timestamp(),
-            "txhash": transaction.txid,
-            "amount": float(amount)
-        })
+        result.append(
+            {
+                "height": transaction.height,
+                "blockhash": transaction.block.blockhash
+                if transaction.block
+                else None,
+                "timestamp": transaction.created.timestamp(),
+                "txhash": transaction.txid,
+                "amount": float(amount),
+            }
+        )
 
     return utils.response(result)
+
 
 @db.route("/blocks", methods=["GET"])
 @use_args(page_args, location="query")
@@ -59,14 +68,17 @@ def blocks(args):
     result = []
 
     for block in blocks:
-        result.append({
-            "height": block.height,
-            "blockhash": block.blockhash,
-            "timestamp": block.created.timestamp(),
-            "tx": len(block.transactions)
-        })
+        result.append(
+            {
+                "height": block.height,
+                "blockhash": block.blockhash,
+                "timestamp": block.created.timestamp(),
+                "tx": len(block.transactions),
+            }
+        )
 
     return utils.response(result)
+
 
 @db.route("/block/<string:bhash>", methods=["GET"])
 @orm.db_session
@@ -74,25 +86,28 @@ def block(bhash):
     block = BlockService.get_by_hash(bhash)
 
     if block:
-        return utils.response({
-            "reward": float(block.reward),
-            "signature": block.signature,
-            "blockhash": block.blockhash,
-            "height": block.height,
-            "tx": len(block.transactions),
-            "timestamp": block.created.timestamp(),
-            "difficulty": block.difficulty,
-            "merkleroot": block.merkleroot,
-            "chainwork": block.chainwork,
-            "version": block.version,
-            "weight": block.weight,
-            "stake": block.stake,
-            "nonce": block.nonce,
-            "size": block.size,
-            "bits": block.bits
-        })
+        return utils.response(
+            {
+                "reward": float(block.reward),
+                "signature": block.signature,
+                "blockhash": block.blockhash,
+                "height": block.height,
+                "tx": len(block.transactions),
+                "timestamp": block.created.timestamp(),
+                "difficulty": block.difficulty,
+                "merkleroot": block.merkleroot,
+                "chainwork": block.chainwork,
+                "version": block.version,
+                "weight": block.weight,
+                "stake": block.stake,
+                "nonce": block.nonce,
+                "size": block.size,
+                "bits": block.bits,
+            }
+        )
 
     return utils.dead_response("Block not found"), 404
+
 
 @db.route("/block/<string:bhash>/transactions", methods=["GET"])
 @use_args(page_args, location="query")
@@ -111,6 +126,7 @@ def block_transactions(args, bhash):
 
     return utils.dead_response("Block not found"), 404
 
+
 @db.route("/transaction/<string:txid>", methods=["GET"])
 @orm.db_session
 def transaction(txid):
@@ -125,6 +141,7 @@ def transaction(txid):
         return utils.response(result)
 
     return utils.dead_response("Transaction not found"), 404
+
 
 @db.route("/history/<string:address>", methods=["GET"])
 @use_args(page_args, location="query")
@@ -143,6 +160,7 @@ def history(args, address):
 
     return utils.response(result)
 
+
 @db.route("/stats/<string:address>", methods=["GET"])
 @orm.db_session
 def count(address):
@@ -152,9 +170,8 @@ def count(address):
     if address:
         transactions = len(address.transactions)
 
-    return utils.response({
-        "transactions": transactions
-    })
+    return utils.response({"transactions": transactions})
+
 
 @db.route("/richlist", methods=["GET"])
 @use_args(page_args, location="query")
@@ -164,12 +181,10 @@ def richlist(args):
     result = []
 
     for entry in addresses:
-        result.append({
-            "address": entry[0].address,
-            "balance": float(entry[1])
-        })
+        result.append({"address": entry[0].address, "balance": float(entry[1])})
 
     return utils.response(result)
+
 
 @db.route("/chart", methods=["GET"])
 @orm.db_session
@@ -181,6 +196,7 @@ def chart():
         result[entry[0]] = entry[1]
 
     return utils.response(result)
+
 
 @db.route("/balance/<string:address>", methods=["GET"])
 @orm.db_session
@@ -194,6 +210,7 @@ def test(address):
         }
 
     return utils.response(result)
+
 
 @db.route("/mempool", methods=["GET"])
 @orm.db_session
@@ -212,10 +229,12 @@ def mempool():
 
     return data
 
+
 @db.route("/broadcast", methods=["POST"])
 @use_args(broadcast_args, location="json")
 def broadcast(args):
     return NodeTransaction.broadcast(args["raw"])
+
 
 @db.route("/txs/<string:address>", methods=["GET"])
 @use_args(height_args, location="query")
@@ -226,9 +245,7 @@ def txs(args, address):
     count = 0
 
     if address:
-        transactions = address.transactions.order_by(
-            orm.desc(Transaction.id)
-        )
+        transactions = address.transactions.order_by(orm.desc(Transaction.id))
 
         count = transactions.count()
 
@@ -243,7 +260,4 @@ def txs(args, address):
         for transaction in transactions:
             result.append(transaction.txid)
 
-    return utils.response({
-        "txcount": count,
-        "tx": result
-    })
+    return utils.response({"txcount": count, "tx": result})

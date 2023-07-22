@@ -1,12 +1,15 @@
 from server import utils
 
+
 class General:
     @classmethod
     def info(cls):
         data = utils.make_request("getblockchaininfo")
 
         if data["error"] is None:
-            data["result"]["supply"] = utils.supply(data["result"]["blocks"])["supply"]
+            data["result"]["supply"] = utils.supply(data["result"]["blocks"])[
+                "supply"
+            ]
             data["result"]["reward"] = utils.reward(data["result"]["blocks"])
             data["result"].pop("verificationprogress")
             data["result"].pop("initialblockdownload")
@@ -14,7 +17,9 @@ class General:
             data["result"].pop("warnings")
             data["result"].pop("size_on_disk")
 
-            nethash = utils.make_request("getnetworkhashps", [120, data["result"]["blocks"]])
+            nethash = utils.make_request(
+                "getnetworkhashps", [120, data["result"]["blocks"]]
+            )
             if nethash["error"] is None:
                 data["result"]["nethash"] = int(nethash["result"])
 
@@ -37,10 +42,7 @@ class General:
 
     @classmethod
     def fee(cls):
-        return utils.response({
-            "feerate": utils.satoshis(0.03),
-            "blocks": 6
-        })
+        return utils.response({"feerate": utils.satoshis(0.03), "blocks": 6})
 
     @classmethod
     def mempool(cls):
@@ -64,3 +66,13 @@ class General:
             height = data["result"]
 
         return height
+
+    @classmethod
+    def mininginfo(cls):
+        data = utils.make_request("getmininginfo")
+        result = 0
+
+        if data["error"] is None:
+            result = data["result"]
+
+        return result

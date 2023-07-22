@@ -1,4 +1,4 @@
-from .models import Token, TokenBalance, Transfer
+from .models import Token, TokenBalance, Transfer, Difficulty
 from .services import ChartTransactionsService
 from .methods.transaction import Transaction
 from .services import ChartVolumeService
@@ -304,6 +304,16 @@ def sync_peers():
                     "lon": geo_data[index]["lon"],
                 }
             )
+
+
+@orm.db_session
+def sync_diff():
+    log_message("Syncing diff")
+
+    data = utils.make_request("getmininginfo")
+
+    if not data["error"]:
+        print(data["result"])
 
 
 @orm.db_session
