@@ -23,17 +23,20 @@ constants.NETWORK_WIF_PREFIXES["mainnet"] = b"\x46"
 
 blueprint = Blueprint("wallet", __name__, url_prefix="/wallet")
 
+
 def greater_than_zero(value):
     if value <= 0:
         raise ValidationError("Value must be greater than 0.")
+
 
 def at_least_one(value):
     if len(value) < 1:
         raise ValidationError("At least one recipient is required.")
 
+
 secret_args = {
     "secret": fields.Str(required=True),
-    "salt": fields.Str(required=True)
+    "salt": fields.Str(required=True),
 }
 
 send_args = {
@@ -41,34 +44,32 @@ send_args = {
     "salt": fields.Str(required=True),
     "amount": fields.Int(required=True, validate=greater_than_zero),
     "destination": fields.Str(required=True),
-    "fee": fields.Int(missing=config.default_fee, validate=greater_than_zero)
+    "fee": fields.Int(missing=config.default_fee, validate=greater_than_zero),
 }
 
 recipient_args = {
     "address": fields.Str(required=True),
-    "amount": fields.Int(required=True, validate=greater_than_zero)
+    "amount": fields.Int(required=True, validate=greater_than_zero),
 }
 
 sendmany_args = {
     "secret": fields.Str(required=True),
     "salt": fields.Str(required=True),
     "recipients": fields.List(
-        fields.Nested(recipient_args),
-        required=True, validate=at_least_one
+        fields.Nested(recipient_args), required=True, validate=at_least_one
     ),
-    "fee": fields.Int(missing=config.default_fee, validate=greater_than_zero)
+    "fee": fields.Int(missing=config.default_fee, validate=greater_than_zero),
 }
 
 history_args = {
     "size": fields.Int(missing=10, validate=validate.Range(min=1, max=100)),
-    "page": fields.Int(missing=1, validate=validate.Range(min=1))
+    "page": fields.Int(missing=1, validate=validate.Range(min=1)),
 }
+
 
 def to_wif(secret, salt):
     seed = hashlib.blake2b(
-        str.encode(secret),
-        key=str.encode(salt),
-        digest_size=32
+        str.encode(secret), key=str.encode(salt), digest_size=32
     ).digest()
 
     data = constants.NETWORK_WIF_PREFIXES["mainnet"] + seed
@@ -81,6 +82,7 @@ def to_wif(secret, salt):
 
     return wif.decode("utf-8")
 
+
 def check_address(address):
     data = NodeAddress.balance(address)
 
@@ -88,6 +90,7 @@ def check_address(address):
         return False
 
     return True
+
 
 @blueprint.route("/address", methods=["POST"])
 @use_args(secret_args, location="json")
@@ -98,9 +101,8 @@ def address(args):
     pub = priv.get_public_key()
     address = pub.get_address()
 
-    return utils.response({
-        "address": address.to_string()
-    })
+    return utils.response({"address": address.to_string()})
+
 
 @blueprint.route("/send", methods=["POST"])
 @use_args(send_args, location="json")
@@ -137,27 +139,30 @@ def send(args):
         return utils.dead_response("No available UTXOs for transaction")
 
     while True:
-        outputs_list = Output.select(
-            lambda o: o.spent == False and o.address == db_addres
-        ).order_by(
-            orm.desc(Output.amount_raw)
-        ).page(page, pagesize=100)
+        outputs_list = (
+            Output.select(
+                lambda o: o.spent == False  # noqa: E712
+                and o.address == db_addres
+            )
+            .order_by(orm.desc(Output.amount_raw))
+            .page(page, pagesize=100)
+        )
 
         if len(outputs_list) == 0:
             break
 
         for output in outputs_list:
-            print(output.txid, output.n, output.amount_raw)
-            print(output.spent)
-            unspent.append({
-                "value": output.amount_raw,
-                "txid": output.txid,
-                "index": output.n
-            })
+            unspent.append(
+                {
+                    "value": output.amount_raw,
+                    "txid": output.txid,
+                    "index": output.n,
+                }
+            )
 
             send_total += output.amount_raw
 
-            if send_total >= amount:
+            if send_total > amount:
                 funded = True
                 break
 
@@ -184,30 +189,37 @@ def send(args):
     target = P2pkhAddress(dest)
 
     txout.append(TxOutput((amount), target.to_script_pub_key()))
-    txout.append(TxOutput((change), address.to_script_pub_key()))
+
+    # Prevent dust
+    if change > 0.0001:
+        txout.append(TxOutput((change), address.to_script_pub_key()))
 
     tx = Transaction(txin, txout)
     pubkey = pub.to_hex()
 
     for i in range(0, len(txin)):
-        sig = priv.sign_input(tx, i, Script(
-            [
-                "OP_DUP", "OP_HASH160", address.to_hash160(),
-                "OP_EQUALVERIFY", "OP_CHECKSIG"
-            ])
+        sig = priv.sign_input(
+            tx,
+            i,
+            Script(
+                [
+                    "OP_DUP",
+                    "OP_HASH160",
+                    address.to_hash160(),
+                    "OP_EQUALVERIFY",
+                    "OP_CHECKSIG",
+                ]
+            ),
         )
 
         txin[i].script_sig = Script([sig, pubkey])
 
     serialized = tx.serialize()
 
-    print(serialized)
-
-    broadcast = NodeTransaction.broadcast(
-        serialized
-    )
+    broadcast = NodeTransaction.broadcast(serialized)
 
     return broadcast
+
 
 @blueprint.route("/sendmany", methods=["POST"])
 @use_args(sendmany_args, location="json")
@@ -248,23 +260,23 @@ def sendmany(args):
         return utils.dead_response("No available UTXOs for transaction")
 
     while True:
-        outputs_list = Output.select(
-            lambda o: o.spent == False and o.address == db_addres
-        ).order_by(
-            orm.desc(Output.amount_raw)
-        ).page(page, pagesize=100)
+        outputs_list = (
+            Output.select(lambda o: o.spent == False and o.address == db_addres)
+            .order_by(orm.desc(Output.amount_raw))
+            .page(page, pagesize=100)
+        )
 
         if len(outputs_list) == 0:
             break
 
         for output in outputs_list:
-            print(output.txid, output.n, output.amount_raw)
-            print(output.spent)
-            unspent.append({
-                "value": output.amount_raw,
-                "txid": output.txid,
-                "index": output.n
-            })
+            unspent.append(
+                {
+                    "value": output.amount_raw,
+                    "txid": output.txid,
+                    "index": output.n,
+                }
+            )
 
             send_total += output.amount_raw
 
@@ -305,24 +317,28 @@ def sendmany(args):
     pubkey = pub.to_hex()
 
     for i in range(0, len(txin)):
-        sig = priv.sign_input(tx, i, Script(
-            [
-                "OP_DUP", "OP_HASH160", address.to_hash160(),
-                "OP_EQUALVERIFY", "OP_CHECKSIG"
-            ])
+        sig = priv.sign_input(
+            tx,
+            i,
+            Script(
+                [
+                    "OP_DUP",
+                    "OP_HASH160",
+                    address.to_hash160(),
+                    "OP_EQUALVERIFY",
+                    "OP_CHECKSIG",
+                ]
+            ),
         )
 
         txin[i].script_sig = Script([sig, pubkey])
 
     serialized = tx.serialize()
 
-    print(serialized)
-
-    broadcast = NodeTransaction.broadcast(
-        serialized
-    )
+    broadcast = NodeTransaction.broadcast(serialized)
 
     return broadcast
+
 
 @blueprint.route("/history/<string:raw_address>", methods=["GET"])
 @use_args(history_args, location="query")
@@ -331,10 +347,10 @@ def history(args, raw_address):
     result = {}
     transactions = []
 
-    if (address := AddressService.get_by_address(raw_address)):
-        index = address.index.order_by(
-            orm.desc(Index.created)
-        ).page(args["page"], pagesize=args["size"])
+    if address := AddressService.get_by_address(raw_address):
+        index = address.index.order_by(orm.desc(Index.created)).page(
+            args["page"], pagesize=args["size"]
+        )
 
         for entry in index:
             tx_data = entry.transaction.display()
@@ -398,15 +414,13 @@ def history(args, raw_address):
 
             transactions.append(result)
 
-    return {
-        "transactions": transactions
-    }
+    return {"transactions": transactions}
+
 
 @blueprint.route("/fee", methods=["GET"])
 def fee():
-    return utils.response({
-        "fee": config.default_fee
-    })
+    return utils.response({"fee": config.default_fee})
+
 
 def init(app):
     app.register_blueprint(blueprint, url_prefix="/wallet")
