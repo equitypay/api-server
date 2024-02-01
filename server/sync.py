@@ -1,4 +1,4 @@
-from .models import Token, TokenBalance, Transfer, Difficulty
+from .models import Token, TokenBalance, Transfer
 from .services import ChartTransactionsService
 from .methods.transaction import Transaction
 from .services import ChartVolumeService
