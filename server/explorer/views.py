@@ -129,9 +129,9 @@ def transactions(page):
         transactions.append(
             {
                 "height": transaction.height,
-                "blockhash": transaction.block.blockhash
-                if transaction.block
-                else None,
+                "blockhash": (
+                    transaction.block.blockhash if transaction.block else None
+                ),
                 "timestamp": transaction.created.timestamp(),
                 "created": transaction.created,
                 "block": transaction.block,
@@ -277,30 +277,46 @@ def search(args):
     if args["query"].isdigit():
         if block := BlockService.get_by_height(args["query"]):
             return redirect(
-                url_for("explorer.block", blockhash=block.blockhash)
+                url_for(
+                    "explorer.block", blockhash=block.blockhash, _external=True
+                )
             )
 
     else:
         if len(args["query"]) == 64:
             if block := BlockService.get_by_hash(args["query"]):
                 return redirect(
-                    url_for("explorer.block", blockhash=block.blockhash)
+                    url_for(
+                        "explorer.block",
+                        blockhash=block.blockhash,
+                        _external=True,
+                    )
                 )
 
-            return redirect(url_for("explorer.transaction", txid=args["query"]))
+            return redirect(
+                url_for(
+                    "explorer.transaction", txid=args["query"], _external=True
+                )
+            )
 
         elif len(args["query"]) == 40:
-            return redirect(url_for("explorer.token", address=args["query"]))
+            return redirect(
+                url_for("explorer.token", address=args["query"], _external=True)
+            )
 
         elif len(args["query"]) == 34:
-            return redirect(url_for("explorer.address", address=args["query"]))
+            return redirect(
+                url_for(
+                    "explorer.address", address=args["query"], _external=True
+                )
+            )
 
-    return redirect(url_for("explorer.overview"))
+    return redirect(url_for("explorer.overview", _external=True))
 
 
 @blueprint.route("/tx/<string:txid>")
 def tx_redirect(txid):
-    return redirect(url_for("explorer.transaction", txid=txid))
+    return redirect(url_for("explorer.transaction", txid=txid, _external=True))
 
 
 @blueprint.route("/data/chart")
