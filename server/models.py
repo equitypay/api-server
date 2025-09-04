@@ -95,7 +95,7 @@ class Block(db.Entity):
     version = orm.Required(int)
     weight = orm.Required(int)
     stake = orm.Required(bool)
-    nonce = orm.Required(int)
+    nonce = orm.Required(int, size=64)
     size = orm.Required(int)
     bits = orm.Required(str)
 
