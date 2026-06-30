@@ -8,12 +8,14 @@ from webargs.flaskparser import use_args
 from bitcoinutils.script import Script
 from ..services import AddressService
 from bitcoinutils.setup import setup
+from bitcoinutils.utils import encode_varint
 from bitcoinutils import constants
 from base58check import b58encode
 from flask import Blueprint
 from pony import orm
 from .. import utils
 import hashlib
+import struct
 import config
 
 constants.NETWORK_SEGWIT_PREFIXES["mainnet"] = "eqpay"
@@ -92,6 +94,60 @@ def check_address(address):
     return True
 
 
+def sign_transaction(tx, priv, pub, address):
+    """Sign every input of a legacy P2PKH transaction.
+
+    All inputs are expected to belong to ``address``. A legacy signature
+    commits to the whole transaction, so signing each input through
+    bitcoinutils' ``sign_input`` deep-copies and re-serializes every input on
+    every call, which is O(n^2) and times out for wallets made of many small
+    UTXOs. Here we build the SIGHASH_ALL digests directly, reusing each
+    input's pre-serialized bytes, and let ``PrivateKey`` handle DER/low-S
+    encoding. This is byte-for-byte equivalent to ``get_transaction_digest``.
+    """
+    subscript = Script(
+        [
+            "OP_DUP",
+            "OP_HASH160",
+            address.to_hash160(),
+            "OP_EQUALVERIFY",
+            "OP_CHECKSIG",
+        ]
+    )
+    pubkey = pub.to_hex()
+    sighash = struct.pack("<i", constants.SIGHASH_ALL)
+
+    # Parts of the digest preimage that never change between inputs.
+    prefix = tx.version + encode_varint(len(tx.inputs))
+    out_bytes = b"".join(out.stream() for out in tx.outputs)
+    suffix = encode_varint(len(tx.outputs)) + out_bytes + tx.locktime + sighash
+
+    # In a legacy digest, every input other than the one being signed has an
+    # empty scriptSig. Inputs start with an empty scriptSig, so serialize each
+    # of them once and reuse those bytes for all digests.
+    empty_inputs = [vin.stream() for vin in tx.inputs]
+
+    for index, vin in enumerate(tx.inputs):
+        # The signed input carries the UTXO's scriptPubKey as its scriptSig.
+        vin.script_sig = subscript
+        signed_input = vin.stream()
+        vin.script_sig = Script([])
+
+        preimage = (
+            prefix
+            + b"".join(
+                signed_input if i == index else empty_inputs[i]
+                for i in range(len(empty_inputs))
+            )
+            + suffix
+        )
+
+        digest = hashlib.sha256(hashlib.sha256(preimage).digest()).digest()
+        sig = priv._sign_input(digest, constants.SIGHASH_ALL)
+
+        vin.script_sig = Script([sig, pubkey])
+
+
 @blueprint.route("/address", methods=["POST"])
 @use_args(secret_args, location="json")
 def address(args):
@@ -162,7 +218,7 @@ def send(args):
 
             send_total += output.amount_raw
 
-            if send_total > amount:
+            if send_total >= amount + fee:
                 funded = True
                 break
 
@@ -195,24 +251,8 @@ def send(args):
         txout.append(TxOutput((change), address.to_script_pub_key()))
 
     tx = Transaction(txin, txout)
-    pubkey = pub.to_hex()
 
-    for i in range(0, len(txin)):
-        sig = priv.sign_input(
-            tx,
-            i,
-            Script(
-                [
-                    "OP_DUP",
-                    "OP_HASH160",
-                    address.to_hash160(),
-                    "OP_EQUALVERIFY",
-                    "OP_CHECKSIG",
-                ]
-            ),
-        )
-
-        txin[i].script_sig = Script([sig, pubkey])
+    sign_transaction(tx, priv, pub, address)
 
     serialized = tx.serialize()
 
@@ -280,7 +320,7 @@ def sendmany(args):
 
             send_total += output.amount_raw
 
-            if send_total >= amount:
+            if send_total >= amount + fee:
                 funded = True
                 break
 
@@ -314,24 +354,8 @@ def sendmany(args):
     txout.append(TxOutput((change), address.to_script_pub_key()))
 
     tx = Transaction(txin, txout)
-    pubkey = pub.to_hex()
 
-    for i in range(0, len(txin)):
-        sig = priv.sign_input(
-            tx,
-            i,
-            Script(
-                [
-                    "OP_DUP",
-                    "OP_HASH160",
-                    address.to_hash160(),
-                    "OP_EQUALVERIFY",
-                    "OP_CHECKSIG",
-                ]
-            ),
-        )
-
-        txin[i].script_sig = Script([sig, pubkey])
+    sign_transaction(tx, priv, pub, address)
 
     serialized = tx.serialize()
 
