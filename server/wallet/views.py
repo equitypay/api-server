@@ -160,6 +160,61 @@ def address(args):
     return utils.response({"address": address.to_string()})
 
 
+def gather_unspent(db_address, target, pagesize=100):
+    """Collect unspent outputs for ``db_address`` until they cover ``target``.
+
+    Uses keyset (seek) pagination on ``amount_raw`` instead of LIMIT/OFFSET so
+    each chunk is an indexed range scan rather than an O(n^2) re-scan of the
+    whole unspent set. Only the three columns the caller needs are fetched, so
+    Output entities are never hydrated. Returns ``(unspent, funded)``.
+    """
+
+    unspent = []
+    send_total = 0
+    funded = False
+    cursor = None
+
+    while True:
+        query = orm.select(
+            (o.amount_raw, o.txid, o.n, o.id)
+            for o in Output
+            if o.vin is None and o.address == db_address
+        )
+
+        if cursor is not None:
+            last_amount, last_id = cursor
+            query = query.filter(
+                lambda amount_raw, txid, n, oid: (amount_raw, oid)
+                < (last_amount, last_id)
+            )
+
+        # Order by amount desc, then id desc so the (amount_raw, id) tuple is a
+        # strict, stable cursor with no skipped or repeated rows on ties.
+        chunk = query.order_by(
+            lambda amount_raw, txid, n, oid: (
+                orm.desc(amount_raw),
+                orm.desc(oid),
+            )
+        )[:pagesize]
+
+        if not chunk:
+            break
+
+        for amount_raw, txid, n, oid in chunk:
+            unspent.append({"value": amount_raw, "txid": txid, "index": n})
+            send_total += amount_raw
+            cursor = (amount_raw, oid)
+
+            if send_total >= target:
+                funded = True
+                break
+
+        if funded:
+            break
+
+    return unspent, funded
+
+
 @blueprint.route("/send", methods=["POST"])
 @use_args(send_args, location="json")
 @orm.db_session
@@ -185,47 +240,10 @@ def send(args):
     if not check_address(dest):
         return utils.dead_response("Invalid destination address")
 
-    unspent = []
-
-    funded = False
-    send_total = 0
-    page = 1
-
     if not (db_addres := Address.get(address=addr_str)):
         return utils.dead_response("No available UTXOs for transaction")
 
-    while True:
-        outputs_list = (
-            Output.select(
-                lambda o: o.spent == False  # noqa: E712
-                and o.address == db_addres
-            )
-            .order_by(orm.desc(Output.amount_raw))
-            .page(page, pagesize=100)
-        )
-
-        if len(outputs_list) == 0:
-            break
-
-        for output in outputs_list:
-            unspent.append(
-                {
-                    "value": output.amount_raw,
-                    "txid": output.txid,
-                    "index": output.n,
-                }
-            )
-
-            send_total += output.amount_raw
-
-            if send_total >= amount + fee:
-                funded = True
-                break
-
-        if funded:
-            break
-
-        page += 1
+    unspent, funded = gather_unspent(db_addres, amount + fee)
 
     if not funded:
         return utils.dead_response("No available UTXOs for transaction")
@@ -290,44 +308,10 @@ def sendmany(args):
                 f"Invalid destination address {recipient_addr}"
             )
 
-    unspent = []
-
-    funded = False
-    send_total = 0
-    page = 1
-
     if not (db_addres := Address.get(address=addr_str)):
         return utils.dead_response("No available UTXOs for transaction")
 
-    while True:
-        outputs_list = (
-            Output.select(lambda o: o.spent == False and o.address == db_addres)
-            .order_by(orm.desc(Output.amount_raw))
-            .page(page, pagesize=100)
-        )
-
-        if len(outputs_list) == 0:
-            break
-
-        for output in outputs_list:
-            unspent.append(
-                {
-                    "value": output.amount_raw,
-                    "txid": output.txid,
-                    "index": output.n,
-                }
-            )
-
-            send_total += output.amount_raw
-
-            if send_total >= amount + fee:
-                funded = True
-                break
-
-        if funded:
-            break
-
-        page += 1
+    unspent, funded = gather_unspent(db_addres, amount + fee)
 
     if not funded:
         return utils.dead_response("No available UTXOs for transaction")

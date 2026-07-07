@@ -335,6 +335,11 @@ class Output(db.Entity):
 
     orm.composite_index(transaction, n)
 
+    # Backs UTXO gathering in wallet send/sendmany: filter by address and
+    # walk outputs largest-first as an index range scan (keyset paginated),
+    # avoiding a filesort over the whole unspent set.
+    orm.composite_index(address, amount_raw)
+
 
 class ChartTransactions(db.Entity):
     _table_ = "chain_chart_transactions"
