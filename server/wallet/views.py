@@ -215,6 +215,51 @@ def gather_unspent(db_address, target, pagesize=100):
     return unspent, funded
 
 
+@blueprint.route("/stats", methods=["POST"])
+@use_args(secret_args, location="json")
+@orm.db_session
+def stats(args):
+    setup("mainnet")
+
+    priv = PrivateKey(wif=to_wif(args["secret"], args["salt"]))
+    pub = priv.get_public_key()
+    address = pub.get_address()
+    addr_str = address.to_string()
+
+    count = 0
+    total = 0
+    smallest = 0
+    largest = 0
+
+    # Aggregate the unspent set in a single grouped query using the same
+    # (address, amount_raw) index that backs UTXO gathering, so this stays
+    # cheap even for wallets made of many small UTXOs.
+    if db_addres := Address.get(address=addr_str):
+        aggregate = orm.select(
+            (
+                orm.count(o),
+                orm.sum(o.amount_raw),
+                orm.min(o.amount_raw),
+                orm.max(o.amount_raw),
+            )
+            for o in Output
+            if o.vin is None and o.address == db_addres
+        ).first()
+
+        if aggregate:
+            count, total, smallest, largest = aggregate
+
+    return utils.response(
+        {
+            "address": addr_str,
+            "count": count,
+            "total": total or 0,
+            "smallest": smallest or 0,
+            "largest": largest or 0,
+        }
+    )
+
+
 @blueprint.route("/send", methods=["POST"])
 @use_args(send_args, location="json")
 @orm.db_session
