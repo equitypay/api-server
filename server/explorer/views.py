@@ -322,29 +322,56 @@ def tx_redirect(txid):
 @blueprint.route("/data/chart")
 @orm.db_session
 def chart():
-    chart_transactions = (
-        ChartTransactions.select()
-        .order_by(orm.desc(ChartTransactions.time))
-        .limit(30)
-    )
+    days = 30
 
-    chart_volume = (
-        ChartVolume.select().order_by(orm.desc(ChartVolume.time)).limit(30)
-    )
+    if not (latest := BlockService.latest_block()):
+        return utils.response(
+            {
+                "transactions": {"labels": [], "data": []},
+                "volume": {"labels": [], "data": []},
+            }
+        )
+
+    # Anchor the window to the chain tip and walk a fixed 30 days back. Only
+    # days that had at least one transaction have a row, so the missing ones
+    # have to be filled with zeros -- selecting "the last 30 rows" instead
+    # would silently close the gaps and misdate every bar.
+    finish = utils.datetime_round_day(latest.created)
+    start = finish - timedelta(days=days - 1)
+
+    transactions = {
+        entry.time: entry.value
+        for entry in ChartTransactions.select(
+            lambda c: c.time >= start and c.time <= finish
+        )
+    }
+
+    volume = {
+        entry.time: entry.value
+        for entry in ChartVolume.select(
+            lambda c: c.time >= start and c.time <= finish
+        )
+    }
+
+    labels = []
+    transactions_data = []
+    volume_data = []
+
+    for offset in range(days):
+        day = start + timedelta(days=offset)
+
+        labels.append(day.strftime("%d-%m-%Y"))
+        transactions_data.append(transactions.get(day, 0))
+        volume_data.append(float(volume.get(day, 0)))
+
+    # Newest first, which is the order the overview template reverses back.
+    labels.reverse()
+    transactions_data.reverse()
+    volume_data.reverse()
 
     chart_data = {
-        "transactions": {
-            "labels": [
-                tx.time.strftime("%d-%m-%Y") for tx in chart_transactions
-            ],
-            "data": [tx.value for tx in chart_transactions],
-        },
-        "volume": {
-            "labels": [
-                volume.time.strftime("%d-%m-%Y") for volume in chart_volume
-            ],
-            "data": [volume.value for volume in chart_volume],
-        },
+        "transactions": {"labels": labels, "data": transactions_data},
+        "volume": {"labels": labels, "data": volume_data},
     }
 
     return utils.response(chart_data)

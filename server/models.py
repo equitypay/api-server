@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from pony import orm
+from . import utils
 import config
 
 MEMPOOL_HEIGHT = -1
@@ -147,6 +148,20 @@ class Transaction(db.Entity):
     addresses = orm.Set("Address")
 
     index = orm.Set("Index")
+
+    def before_delete(self):
+        # Reverse this transaction's contribution to the daily charts. Without
+        # this the counters only ever grow: a reorg deletes the orphaned
+        # transactions but their increments stay behind, and the replacement
+        # chain then counts the very same transactions a second time.
+        update_charts(self, -1)
+
+    @property
+    def reward(self):
+        # Coinbase (PoW) and coinstake (PoS) are minted by the chain itself,
+        # not user activity. The sync never stores the empty coinbase of a PoS
+        # block, so these two flags cover every reward and nothing else.
+        return self.coinbase or self.coinstake
 
     def display(self):
         latest_blocks = Block.select().order_by(orm.desc(Block.height)).first()
@@ -351,8 +366,39 @@ class ChartTransactions(db.Entity):
 class ChartVolume(db.Entity):
     _table_ = "chain_chart_volume"
 
-    value = orm.Required(int, default=0)
+    # Decimal, not int: this used to truncate through int(), so every transfer
+    # below one coin contributed nothing and everything else was rounded down.
+    value = orm.Required(Decimal, precision=20, scale=8, default=0)
     time = orm.Required(datetime)
+
+
+def update_charts(transaction, sign):
+    """Apply a transaction to the daily chart counters.
+
+    ``sign`` is 1 when the transaction is indexed and -1 when it is deleted,
+    so a block that gets orphaned unwinds exactly what it added. Both
+    directions round the day through utils.datetime_round_day so they always
+    land on the same row.
+
+    Reward transactions are skipped: counting them made the transaction chart
+    a restatement of the block count, and a coinstake returns the whole staked
+    input as an output, which swamped the volume chart with stake churn.
+    """
+
+    if transaction.reward:
+        return
+
+    time = utils.datetime_round_day(transaction.created)
+
+    if not (transactions_interval := ChartTransactions.get(time=time)):
+        transactions_interval = ChartTransactions(time=time)
+
+    transactions_interval.value += sign
+
+    if not (volume_interval := ChartVolume.get(time=time)):
+        volume_interval = ChartVolume(time=time)
+
+    volume_interval.value += sign * transaction.amount
 
 
 db.generate_mapping(create_tables=True)

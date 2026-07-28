@@ -1,7 +1,5 @@
-from .models import Token, TokenBalance, Transfer
-from .services import ChartTransactionsService
+from .models import Token, TokenBalance, Transfer, update_charts
 from .methods.transaction import Transaction
-from .services import ChartVolumeService
 from .services import TransactionService
 from .services import BalanceService
 from .methods.general import General
@@ -219,19 +217,7 @@ def process_transaction(txid, block, index=None):
             receiver_balance.amount += transfer.amount
             sender_balance.amount -= transfer.amount
 
-    time = utils.datetime_round_day(transaction.created)
-
-    transactions_interval = ChartTransactionsService.get_by_time(time)
-    if not transactions_interval:
-        transactions_interval = ChartTransactionsService.create(time)
-
-    transactions_interval.value += 1
-
-    volume_interval = ChartVolumeService.get_by_time(time)
-    if not volume_interval:
-        volume_interval = ChartVolumeService.create(time)
-
-    volume_interval.value += int(transaction.amount)
+    update_charts(transaction, 1)
 
 
 @orm.db_session
@@ -243,6 +229,13 @@ def rollback_blocks(height):
 
         reorg_block = latest_block
         latest_block = reorg_block.previous_block
+
+        # Delete the transactions explicitly. Transaction.block is Optional,
+        # so deleting the block alone just nulls the foreign key and strands
+        # the rows -- they would keep their chart contribution and start
+        # looking like mempool transactions.
+        for transaction in reorg_block.transactions:
+            transaction.delete()
 
         reorg_block.delete()
         orm.commit()

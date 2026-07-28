@@ -1,20 +1,17 @@
 from bitcoinutils.keys import P2pkhAddress
 from bitcoinutils.setup import setup
 from bitcoinutils import constants
-from datetime import timedelta
 import requests
 import config
 import math
 import json
 
 def datetime_round_day(timestamp):
-    return timestamp - timedelta(
-        days=timestamp.day % 1,
-        hours=timestamp.hour,
-        minutes=timestamp.minute,
-        seconds=timestamp.second,
-        microseconds=timestamp.microsecond
-    )
+    # Truncate to midnight. This is the bucket key for the daily chart rows,
+    # so the sync and Transaction.before_delete must both round through here
+    # or a deleted transaction would decrement a different row than the one
+    # it incremented.
+    return timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
 
 def hash160_to_address(hash160):
     constants.NETWORK_SEGWIT_PREFIXES["mainnet"] = "eqpay"
