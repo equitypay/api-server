@@ -158,9 +158,10 @@ class Transaction(db.Entity):
 
     @property
     def reward(self):
-        # Coinbase (PoW) and coinstake (PoS) are minted by the chain itself,
-        # not user activity. The sync never stores the empty coinbase of a PoS
-        # block, so these two flags cover every reward and nothing else.
+        # Minted by the chain itself rather than user activity: coinbase is
+        # the PoW reward, coinstake the PoS one. The sync never stores the
+        # empty coinbase of a PoS block, so these two flags cover every
+        # reward and nothing else.
         return self.coinbase or self.coinstake
 
     def display(self):
@@ -380,13 +381,10 @@ def update_charts(transaction, sign):
     directions round the day through utils.datetime_round_day so they always
     land on the same row.
 
-    Reward transactions are skipped: counting them made the transaction chart
-    a restatement of the block count, and a coinstake returns the whole staked
-    input as an output, which swamped the volume chart with stake churn.
+    Every transaction counts, block rewards included. That makes the unwind
+    above the load-bearing part: an orphaned block always carries a reward,
+    so without it the charts drift on every single reorg.
     """
-
-    if transaction.reward:
-        return
 
     time = utils.datetime_round_day(transaction.created)
 

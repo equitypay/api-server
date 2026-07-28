@@ -37,10 +37,10 @@ TRANSACTIONS_TABLE = "chain_chart_transactions"
 VOLUME_TABLE = "chain_chart_volume"
 SOURCE_TABLE = "chain_transactions"
 
-# Mirrors utils.datetime_round_day (midnight truncation) and
-# Transaction.reward (coinbase or coinstake) from the application code.
+# Mirrors utils.datetime_round_day (midnight truncation) in the application
+# code. Every transaction counts, block rewards included, matching
+# update_charts().
 DAY = "date_trunc('day', created)"
-NOT_REWARD = "coinbase = false AND coinstake = false"
 
 db = orm.Database(**config.db)
 
@@ -59,14 +59,14 @@ def rebuild(cursor):
     cursor.execute(
         f'INSERT INTO {TRANSACTIONS_TABLE} ("time", value) '
         f"SELECT {DAY} AS day, count(*) "
-        f"FROM {SOURCE_TABLE} WHERE {NOT_REWARD} GROUP BY day"
+        f"FROM {SOURCE_TABLE} GROUP BY day"
     )
 
     print(f"Resumming volume per day from {SOURCE_TABLE} ...")
     cursor.execute(
         f'INSERT INTO {VOLUME_TABLE} ("time", value) '
         f"SELECT {DAY} AS day, sum(amount) "
-        f"FROM {SOURCE_TABLE} WHERE {NOT_REWARD} GROUP BY day"
+        f"FROM {SOURCE_TABLE} GROUP BY day"
     )
 
 
@@ -81,7 +81,7 @@ def summary(cursor):
     volume = cursor.fetchone()[0]
 
     if not days:
-        print("\nNo non-reward transactions found -- both tables are empty.")
+        print("\nNo transactions found -- both tables are empty.")
         return
 
     print(f"\nRebuilt {days} day(s), {first.date()} .. {last.date()}")
@@ -89,8 +89,8 @@ def summary(cursor):
     print(f"Volume:       {volume}")
     print(
         "\nCross-check a few of these days against "
-        "`python daily_transactions.py <start> <finish>` -- its Transfers "
-        "column is counted the same way and should match exactly."
+        "`python daily_transactions.py <start> <finish>` -- the chart counts "
+        "every transaction, so it should match Transfers + Rewards."
     )
 
 
